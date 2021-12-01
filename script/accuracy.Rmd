@@ -1,0 +1,89 @@
+---
+title: "Accuracy"
+author: "Dana Lanceman"
+date: "11/25/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = 'C:/Users/danal/OneDrive - UNSW/Desktop/WRL/R')
+```
+
+
+```{r get packages}
+library(tidyverse)
+library(ggpubr)
+library(readxl)
+```
+
+```{r get data}
+producers <- read_excel("raw/training_validation_matrix.xlsx", sheet = "producers")
+users <- read_excel("raw/training_validation_matrix.xlsx", sheet = "users") # currently empty
+```
+
+
+```{r}
+acc.time.line <- function(dataset, classs, classname){
+  dataset %>% subset(Class == classs)  %>% ggplot(aes(x = Date, y = Average*100, color = as.factor(Scale))) +
+  geom_line(size = 2) + 
+geom_pointrange(aes(ymin=(Average-SD)*100, ymax=(Average+SD)*100), size = 2) + 
+  labs(title = classname, x = "Date", y = "Accuracy (%)") +
+  theme_bw() +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold", hjust = 0.5, size = 56),
+        text = element_text(size = 44),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+    ylim(60, 100)
+}
+
+spor <- acc.time.line(producers, "spor", "Sporobolus") +
+  labs(title = "Sporobolus", x = "", y = "")
+spor
+
+sarc <- acc.time.line(producers, "sarc", "Sarcorcornia") +
+  labs(title = "Sarcorcornia", x = "", y = "Accuracy (%)") 
+sarc
+
+grass <- acc.time.line(producers, "grass", "Grass") +
+  labs(title = "Grass", x = "", y = "")
+grass
+
+mud <- acc.time.line(producers, "mud", "Mud")
+mud
+
+water <- acc.time.line(producers, "water", "Water")  +
+  labs(title = "Water", x = "Date", y = "")
+water
+
+sueda <- acc.time.line(producers, "sueda", "Suaeda")  +
+  labs(title = "Sueda", x = "", y = "Accuracy (%)") 
+sueda
+
+dead <- acc.time.line(producers, "white_vege", "Dead vegetation")  +
+  labs(title = "Dead vegetation", x = "", y = "Accuracy (%)") 
+dead
+
+road <- acc.time.line(producers, "road", "Road") +
+  labs(title = "Road", x = "", y = "")
+road 
+
+
+# only one data point for each of these
+acc.time.line(producers, "sarc_clump", "Sarcorcornia clumps")
+acc.time.line(producers, "algae", "Algae") 
+
+
+# what scale is red vs blue?
+
+# combine
+ggarrange(sarc, spor, sueda, grass, dead, road, mud, water, ncol = 2, nrow = 4, common.legend = TRUE, legend = "bottom") + 
+  theme(legend.title = element_blank())
+# export at 2100 x 2800
+
+# need to remove the legend title = attempt above didn't work
+```
+
