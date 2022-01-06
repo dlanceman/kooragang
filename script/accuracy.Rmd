@@ -20,19 +20,26 @@ library(readxl)
 ```
 
 ```{r get data}
-producers <- read_excel("raw/training_validation_matrix.xlsx", sheet = "producers") %>% 
-  mutate(Scale = as.factor(Scale))
-users <- read_excel("raw/training_validation_matrix.xlsx", sheet = "users")  %>% 
-  mutate(Scale = as.factor(Scale))
+producers <- read_excel("raw/training_validation_2_alldata.xlsx", sheet = "accuracy") %>% 
+  mutate(Scale = as.factor(Scale)) %>% 
+  select(-"Users") %>% 
+  rename("accuracy" = "Producers")
+
+users <- read_excel("raw/training_validation_2_alldata.xlsx", sheet = "accuracy") %>% 
+  mutate(Scale = as.factor(Scale)) %>% 
+  select(-"Producers") %>% 
+  rename("accuracy" = "Users")
 ```
 
 
 ```{r view in wide format and export for data table}
-prod_wide <- producers %>% dplyr::select(Dataset, Scale, Class, Average) %>% pivot_wider(names_from = Class, values_from = Average)
+prod_wide <- producers %>% dplyr::select(Dataset, Scale, Class, accuracy) %>%
+  pivot_wider(names_from = Class, values_from = accuracy)
 
 #write_csv(prod_wide,"export/csv/producers_wide.csv")
 
-user_wide <- users %>% dplyr::select(Dataset, Scale, Class, Average) %>% pivot_wider(names_from = Class, values_from = Average)
+user_wide <- users %>% dplyr::select(Dataset, Scale, Class, accuracy) %>% 
+  pivot_wider(names_from = Class, values_from = accuracy)
 
 #write_csv(user_wide,"export/csv/users_wide.csv")
 ```
@@ -40,9 +47,8 @@ user_wide <- users %>% dplyr::select(Dataset, Scale, Class, Average) %>% pivot_w
 
 ```{r functions}
 acc.time.line <- function(dataset, classs, classname){
-  dataset %>% subset(Class == classs)  %>% ggplot(aes(x = Date, y = Average*100, color = Scale)) +
+  dataset %>% subset(Class == classs)  %>% ggplot(aes(x = Date, y = accuracy*100, color = Scale)) +
   geom_line(size = 2) + 
-geom_pointrange(aes(ymin=(Average-SD)*100, ymax=(Average+SD)*100), size = 2) + 
   labs(title = classname, x = "Date", y = "Accuracy (%)", color = "Resolution (m)") +
   theme_bw() +
   theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 56),
@@ -54,21 +60,6 @@ geom_pointrange(aes(ymin=(Average-SD)*100, ymax=(Average+SD)*100), size = 2) +
     ylim(35, 100)
 }
 
-
-# delete this function
-acc.scale <- function(dataset, datee, datename){
-  dataset %>% subset(Dataset == datee, Class = c("spor", "sarc", "sueda"))  %>% ggplot(aes(x = Scale, y = Average*100, color = Class)) +
-  geom_line(size = 2) + 
-geom_pointrange(aes(ymin=(Average-SD)*100, ymax=(Average+SD)*100), size = 2) + 
-  labs(title = datename, x = "Pixel size (m)", y = "Accuracy (%)") +
-  theme_bw() +
-  theme(legend.position = "none",
-        plot.title = element_text(face = "bold", hjust = 0.5, size = 56),
-        text = element_text(size = 44),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank()) +
-    ylim(35, 100)
-}
 ```
 
 
@@ -166,47 +157,4 @@ ggarrange(sarc, spor, sueda, grass, dead, road, mud, water, ncol = 2, nrow = 4, 
 # export at 2100 x 2800
 ```
 
-
-# accuracy per date by scale - delete this section
-
-
-```{r producer's accuracy}
-scale0 <- acc.scale(producers, "0mos", "0 months") +
-  labs(title = "0 months", x = "", y = "Accuracy (%)")
-scale0
-
-scale9 <- acc.scale(producers, "9mos", "9 months") +
-  labs(title = "9 months", x = "", y = "") 
-scale9
-
-scale21 <- acc.scale(producers, "21mos", "21 months") +
-  labs(title = "21 months", x = "", y = "Accuracy (%)")
-scale21
-
-scale26 <- acc.scale(producers, "26mos", "26 months") +
-  labs(title = "26 months", x = "", y = "")
-scale26
-
-scale34 <- acc.scale(producers, "34mos", "34 months")  +
-  labs(title = "34 months", x = "", y = "Accuracy (%)")
-scale34
-
-scale42 <- acc.scale(producers, "42mos", "42 months")  +
-  labs(title = "42 months", x = "Pixel size (m)", y = "") 
-scale42
-
-scale46 <- acc.scale(producers, "46mos", "46 months")  +
-  labs(title = "46 months", x = "Pixel size (m)", y = "Accuracy (%)") 
-scale46
-
-
-
-
-# combine
-ggarrange(scale0, scale9, scale21, scale26, scale34, scale42, scale46, ncol = 2, nrow = 4, common.legend = TRUE, legend = "bottom") + 
-  theme(legend.title = element_blank())
-# export at 2100 x 2800
-
-# need to remove the legend title = attempt above didn't work
-```
 
