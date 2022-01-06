@@ -20,25 +20,40 @@ library(readxl)
 ```
 
 ```{r get data}
-producers <- read_excel("raw/training_validation_matrix.xlsx", sheet = "producers")
-users <- read_excel("raw/training_validation_matrix.xlsx", sheet = "users")
+producers <- read_excel("raw/training_validation_matrix.xlsx", sheet = "producers") %>% 
+  mutate(Scale = as.factor(Scale))
+users <- read_excel("raw/training_validation_matrix.xlsx", sheet = "users")  %>% 
+  mutate(Scale = as.factor(Scale))
+```
+
+
+```{r view in wide format and export for data table}
+prod_wide <- producers %>% dplyr::select(Dataset, Scale, Class, Average) %>% pivot_wider(names_from = Class, values_from = Average)
+
+#write_csv(prod_wide,"export/csv/producers_wide.csv")
+
+user_wide <- users %>% dplyr::select(Dataset, Scale, Class, Average) %>% pivot_wider(names_from = Class, values_from = Average)
+
+#write_csv(user_wide,"export/csv/users_wide.csv")
 ```
 
 
 ```{r functions}
 acc.time.line <- function(dataset, classs, classname){
-  dataset %>% subset(Class == classs)  %>% ggplot(aes(x = Date, y = Average*100, color = as.factor(Scale))) +
+  dataset %>% subset(Class == classs)  %>% ggplot(aes(x = Date, y = Average*100, color = Scale)) +
   geom_line(size = 2) + 
 geom_pointrange(aes(ymin=(Average-SD)*100, ymax=(Average+SD)*100), size = 2) + 
-  labs(title = classname, x = "Date", y = "Accuracy (%)") +
+  labs(title = classname, x = "Date", y = "Accuracy (%)", color = "Resolution (m)") +
   theme_bw() +
-  theme(legend.position = "none",
-        plot.title = element_text(face = "bold", hjust = 0.5, size = 56),
+  theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 56),
         text = element_text(size = 44),
         panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank()) +
+        panel.grid.minor = element_blank(),
+        plot.margin = margin(10,22,10,10)) +
+    geom_hline(yintercept = 80, linetype = "dashed", size = 3) +
     ylim(35, 100)
 }
+
 
 # delete this function
 acc.scale <- function(dataset, datee, datename){
@@ -80,7 +95,8 @@ water <- acc.time.line(producers, "water", "Water")  +
 water
 
 sueda <- acc.time.line(producers, "sueda", "Suaeda")  +
-  labs(title = "Sueda", x = "", y = "Accuracy (%)") 
+  labs(title = "Suaeda", x = "", y = "Accuracy (%)") +
+  scale_x_datetime(date_labels = "%Y", date_breaks = "1 year")
 sueda
 
 dead <- acc.time.line(producers, "white_vege", "Dead vegetation")  +
@@ -98,11 +114,9 @@ acc.time.line(producers, "algae", "Algae")
 
 
 # combine
-ggarrange(sarc, spor, sueda, grass, dead, road, mud, water, ncol = 2, nrow = 4, common.legend = TRUE, legend = "bottom") + 
-  theme(legend.title = element_blank())
+ggarrange(sarc, spor, sueda, grass, dead, road, mud, water, ncol = 2, nrow = 4, common.legend = TRUE, legend = "bottom") 
 # export at 2100 x 2800
 
-# need to remove the legend title = attempt above didn't work
 ```
 
 
@@ -128,7 +142,8 @@ water <- acc.time.line(users, "water", "Water")  +
 water
 
 sueda <- acc.time.line(users, "sueda", "Suaeda")  +
-  labs(title = "Sueda", x = "", y = "Accuracy (%)") 
+  labs(title = "Suaeda", x = "", y = "Accuracy (%)") +
+  scale_x_datetime(date_labels = "%Y", date_breaks = "1 year")
 sueda
 
 dead <- acc.time.line(users, "white_vege", "Dead vegetation")  +
@@ -147,11 +162,8 @@ acc.time.line(users, "algae", "Algae")
 
 
 # combine
-ggarrange(sarc, spor, sueda, grass, dead, road, mud, water, ncol = 2, nrow = 4, common.legend = TRUE, legend = "bottom") + 
-  theme(legend.title = element_blank())
+ggarrange(sarc, spor, sueda, grass, dead, road, mud, water, ncol = 2, nrow = 4, common.legend = TRUE, legend = "bottom") 
 # export at 2100 x 2800
-
-# need to remove the legend title = attempt above didn't work
 ```
 
 
