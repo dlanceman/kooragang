@@ -17,6 +17,7 @@ library(tidyverse)
 library(raster)
 library(sf)
 library(gdata)
+library(ggpubr)
 
 # note that both tidyverse and raster have functions "select" and "extract"
 ```
@@ -37,6 +38,14 @@ twentysix1 <- raster("raw/26mos_classified_0_1_allclass.tif")
 thirtyfour1 <- raster("raw/34mos_classified_0_1_proper.tif")
 fortytwo1 <- raster("raw/42mos_classified_0_1_proper.tif")
 fortysix1 <- raster("raw/46mos_classified_0_1_proper.tif")
+
+zero2 <- raster("raw/0mos_classified_1_scale.tif")
+nine2 <- raster("raw/9mos_classified_1_scale.tif")
+eighteen2 <- raster("raw/18mos_classified_1_scale.tif")
+twentysix2 <- raster("raw/26mos_classified_1_scale.tif")
+thirtyfour2 <- raster("raw/34mos_classified_1_scale.tif")
+fortytwo2 <- raster("raw/42mos_classified_1_scale.tif")
+fortysix2 <- raster("raw/46mos_classified_1_scale.tif")
 
 # get shapefile and convert to same coordinate system
 # need to replace the #'s with a real file name
@@ -62,6 +71,14 @@ plot(thirtyfour1)
 plot(fortytwo1)
 plot(fortysix1) # background is labelled # 5 - need to remove
 
+plot(zero2)
+plot(nine2)
+plot(eighteen2)
+plot(twentysix2) # background is labelled # 5 - need to remove
+plot(thirtyfour2)
+plot(fortytwo2)
+plot(fortysix2) # background is labelled # 5 - need to remove
+
 plot(boundary)
 ```
 
@@ -75,6 +92,10 @@ twsix1.crop <- crop(twentysix1, extent(boundary))
 twsix1.crop <- mask(twsix1.crop, boundary)
 plot(twsix1.crop)
 
+twsix2.crop <- crop(twentysix2, extent(boundary)) 
+twsix2.crop <- mask(twsix2.crop, boundary)
+plot(twsix2.crop)
+
 # crop 46 mos
 fosix.crop <- crop(fortysix, extent(boundary)) 
 fosix.crop <- mask(fosix.crop, boundary)
@@ -83,9 +104,11 @@ plot(fosix.crop)
 fosix1.crop <- crop(fortysix1, extent(boundary)) 
 fosix1.crop <- mask(fosix1.crop, boundary)
 plot(fosix1.crop)
+
+fosix2.crop <- crop(fortysix2, extent(boundary)) 
+fosix2.crop <- mask(fosix2.crop, boundary)
+plot(fosix2.crop)
 ```
-
-
 
 # Calculating areas - 0.5m resolution
 ```{r 0 mos}
@@ -119,7 +142,7 @@ cells0DF
 # calculate number of cells in each class
 cells9 <- freq(nine) # output is vectors
 cells9DF <- as.data.frame(cells9) # make this a dataframe
-cells9DF$category <- c("na", "spor", "sarc", "road", "grass", "mud", "water", "white_vege", "sarc_clumps") # add categories
+cells9DF$category <- c("na", "spor", "sarc", "grass", "mud", "water", "white_vege","road", "sarc_clumps") # add categories
 cells9DF
 
 # determine cell size in map units
@@ -143,7 +166,7 @@ cells9DF
 # calculate number of cells in each class
 cells18 <- freq(eighteen) # output is vectors
 cells18DF <- as.data.frame(cells18) # make this a dataframe
-cells18DF$category <- c("na", "spor","sarc", "road", "grass", "mud", "water","sueda", "white_vege") # add categories
+cells18DF$category <- c("na", "spor","sarc", "grass", "mud", "water","sueda","road",  "white_vege") # add categories
 cells18DF
 
 # determine cell size in map units
@@ -163,7 +186,7 @@ cells18DF
 # calculate number of cells in each class
 cells26 <- freq(twsix.crop) # output is vectors
 cells26DF <- as.data.frame(cells26) # make this a dataframe
-cells26DF$category <- c("spor","sarc", "road", "grass", "mud", "water","sueda", "white_vege","na") # add categories
+cells26DF$category <- c("spor","sarc", "grass", "mud", "water","sueda", "road","white_vege", "na") # add categories
 cells26DF
 
 # determine cell size in map units
@@ -262,7 +285,7 @@ cells0DF1
 # calculate number of cells in each class
 cells9 <- freq(nine1) # output is vectors
 cells9DF1 <- as.data.frame(cells9) # make this a dataframe
-cells9DF1$category <- c("na", "spor", "sarc", "road", "grass", "mud", "water", "white_vege", "sarc_clumps") # add categories
+cells9DF1$category <- c("na", "spor", "sarc",  "grass", "mud", "water", "white_vege", "road", "sarc_clumps") # add categories
 cells9DF1
 
 # determine cell size in map units
@@ -284,7 +307,7 @@ cells9DF1
 # calculate number of cells in each class
 cells18 <- freq(eighteen1) # output is vectors
 cells18DF1 <- as.data.frame(cells18) # make this a dataframe
-cells18DF1$category <- c("na", "spor","sarc", "road", "grass", "mud", "water","sueda", "white_vege") # add categories
+cells18DF1$category <- c("na", "spor","sarc", "grass", "mud", "water","sueda","road",  "white_vege") # add categories
 cells18DF1
 
 # determine cell size in map units
@@ -303,7 +326,7 @@ cells18DF1
 # calculate number of cells in each class
 cells26 <- freq(twsix1.crop) # output is vectors
 cells26DF1 <- as.data.frame(cells26) # make this a dataframe
-cells26DF1$category <- c("spor","sarc", "road", "grass", "mud", "water","sueda", "white_vege","na") # add categories
+cells26DF1$category <- c("spor","sarc", "grass", "mud", "water","sueda", "road", "white_vege","na") # add categories
 cells26DF1
 
 # determine cell size in map units
@@ -376,6 +399,150 @@ cells46DF1
 # spor is 3.34 ha, sarc is 6.26 ha, sueda is 0.86 ha
 # total is 10.46 ha
 ```
+
+
+# Calculating areas - 1m resolution
+```{r 0 mos}
+# calculate number of cells in each class
+cells0 <- freq(zero2) # output is vectors
+cells0DF2 <- as.data.frame(cells0) # make this a dataframe
+cells0DF2$category <- c("na", "spor","sarc", "grass", "mud", "water", "white_vege","road") # add categories
+cells0DF2
+
+# determine cell size in map units
+res(zero2) # cell size is 1 x 1 (metres)
+
+# use this to calculate area of each class in hectares
+cells0DF2$area <- cells0DF2$count*1*1/10000
+cells0DF2
+
+# spor is 3.24ha, sarc is 1.08ha (total is 4.32 ha) 
+```
+
+
+```{r 9 mos}
+# 9 mos 
+# calculate number of cells in each class
+cells9 <- freq(nine2) # output is vectors
+cells9DF2 <- as.data.frame(cells9) # make this a dataframe
+cells9DF2$category <- c("na", "spor", "sarc", "grass", "mud", "water", "white_vege", "road",  "sarc_clumps") # add categories
+cells9DF2
+
+# determine cell size in map units
+res(nine2) # cell size is 1 x 1 (metres)
+
+# use this to calculate area of each class in hectares
+cells9DF2$area <- cells9DF2$count*1*1/10000
+cells9DF2
+
+# spor = 3.36 ha, sarc = 0.82 ha, sarc clumps = 1.16 ha (total = 5.7 ha - similar to 0.5m resolution but different distribution between the classes)
+
+
+# (with combined data, saltmarsh area is 4.69 ha - similar to 0.5m resolution (5.04 ha))
+```
+
+
+```{r 18 mos}
+# 18 mos
+# calculate number of cells in each class
+cells18 <- freq(eighteen2) # output is vectors
+cells18DF2 <- as.data.frame(cells18) # make this a dataframe
+cells18DF2$category <- c("na", "spor","sarc",  "grass", "mud", "water","sueda", "road","white_vege") # add categories
+cells18DF2
+
+# determine cell size in map units
+res(eighteen2) # cell size is 1 x 1 (metres)
+
+# use this to calculate area of each class in hectares
+cells18DF2$area <- cells18DF1$count*1*1/10000
+cells18DF2
+
+# spor is 1.82 ha, sarc is 2.08 ha, sueda is 0.59 ha
+```
+
+
+```{r 26 mos}
+# 26 mos 
+# calculate number of cells in each class
+cells26 <- freq(twsix2.crop) # output is vectors
+cells26DF2 <- as.data.frame(cells26) # make this a dataframe
+cells26DF2$category <- c("spor","sarc", "grass", "mud", "water","sueda", "road", "white_vege","na") # add categories
+cells26DF2
+
+# determine cell size in map units
+res(twsix2.crop) # cell size is 1 x 1 (metres)
+
+# use this to calculate area of each class in hectares
+cells26DF2$area <- cells26DF2$count*1*1/10000
+cells26DF2
+
+# spor is 1.80 ha, sarc is 4.61 ha, sueda is 0.78 ha
+```
+
+
+```{r 34 mos}
+# 34 mos 
+# calculate number of cells in each class
+cells34 <- freq(thirtyfour2) # output is vectors
+cells34DF2 <- as.data.frame(cells34) # make this a dataframe
+cells34DF2$category <- c("na", "spor","sarc","grass", "mud", "water","sueda","road", "white_vege") # add categories
+cells34DF2
+
+# determine cell size in map units
+res(thirtyfour2) # cell size is 1 x 1 (metres)
+
+# use this to calculate area of each class in hectares
+cells34DF2$area <- cells34DF2$count*1*1/10000
+cells34DF2
+
+# spor is 2.53 ha, sarc is 4.43 ha, sueda is 0.81 ha (total is 7.77 ha)
+```
+
+
+```{r 42 mos}
+# 42 mos
+# calculate number of cells in each class
+cells42 <- freq(fortytwo2) # output is vectors
+cells42DF2 <- as.data.frame(cells42) # make this a dataframe
+cells42DF2$category <- c("na", "spor","sarc","grass", "mud", "water","algae","road", "white_vege", "sueda") # add categories
+cells42DF2
+
+# determine cell size in map units
+res(fortytwo2) # cell size is 1 x 1 (metres)
+
+# use this to calculate area of each class in hectares
+cells42DF2$area <- cells42DF2$count*1*1/10000
+cells42DF2
+
+# spor is 4.02 ha, sarc is 6.42 ha, sueda is 0.34 ha (sueda is not super well classified here)
+# total is 10.78 ha
+```
+
+
+```{r 46 mos}
+# 46 mos 
+# calculate number of cells in each class
+cells46 <- freq(fosix2.crop) # output is vectors
+cells46DF2 <- as.data.frame(cells46) # make this a dataframe
+cells46DF2$category <- c("spor","sarc","grass", "mud", "water","sueda","road", "white_vege", "na") # add categories
+cells46DF2
+
+# determine cell size in map units
+res(fosix2.crop) # cell size is 1 x 1 (metres)
+
+# use this to calculate area of each class in hectares
+cells46DF2$area <- cells46DF2$count*1*1/10000
+cells46DF2
+
+# note water is overestimated here as the background is labelled as water
+
+# spor is 3.34 ha, sarc is 6.26 ha, sueda is 0.86 ha
+# total is 10.46 ha
+```
+
+
+
+# Combine datasets
 
 ```{r combine datasets at each scale}
 # combine 0.5 scale datasets, adding a column with the source of each 
@@ -458,6 +625,17 @@ dead.area
 # combine eight main plots
 ggarrange(sarc.area, spor.area, sueda.area, grass.area, dead.area, road.area, mud.area, water.area, ncol = 2, nrow = 4, common.legend = TRUE, legend = "bottom") 
 ```
+
+```{r plot together}
+areas %>% 
+  filter(Scale == 0.1,
+         category %in% c("spor", "sarc", "mud", "white_vege", "sueda")) %>%  
+  ggplot(aes(x = date, y = area, color = category)) +
+  geom_line() +
+  theme_classic()
+```
+
+
 
 # Only target area
 
