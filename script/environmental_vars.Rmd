@@ -1,0 +1,22 @@
+---
+title: "Environmental variables"
+author: "Dana Lanceman"
+date: "12/9/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = 'C:/Users/danal/OneDrive - UNSW/Desktop/WRL/R')
+```
+
+```{r get packages}
+library(tidyverse)
+```
+
+```{r get data}
+
+```
+
