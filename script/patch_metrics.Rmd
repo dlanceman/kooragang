@@ -16,27 +16,28 @@ knitr::opts_knit$set(root.dir = 'C:/Users/danal/OneDrive - UNSW/Desktop/WRL/R')
 library(tidyverse)
 library(raster)
 library(sf)
-install.packages('Rcpp')
-library(Rcpp)
 library(landscapemetrics)
+
+# note that landscapemetrics requires a lot of memory and may come up with an "rcpp" package error if the hardware is not sufficient. Try with a computer with more memory in that case! 
+
+# I've run this and output the patch metrics as two csvs - see chunk 10. Can just skip to this chunk to save time or if insufficient memory. 
 ```
 
 
 ```{r load data - just 0.1 resolution}
-zero1 <- raster("raw/0mos_classified_0_1_proper.tif")
-nine1 <- raster("raw/9mos_classified_8class_0_1.tif")
-eighteen1 <- raster("raw/18mos_classified_0_1_allclass.tif")
-twentysix1 <- raster("raw/26mos_classified_0_1_allclass.tif")
-thirtyfour1 <- raster("raw/34mos_classified_0_1_proper.tif")
-fortytwo1 <- raster("raw/42mos_classified_0_1_proper.tif")
-fortysix1 <- raster("raw/46mos_classified_0_1_proper.tif")
+zero1 <- raster("raw/0mos_classified_0_1_all.tif")
+nine1 <- raster("raw/9mos_classified_01_all_new.tif")
+eighteen1 <- raster("raw/18mos_classified_01_all.tif")
+twentysix1 <- raster("raw/26mos_classified_01_all.tif")
+thirtyfour1 <- raster("raw/34mos_classified_01_all.tif")
+fortytwo1 <- raster("raw/42mos_classified_01_all.tif")
+fortysix1 <- raster("raw/46mos_classified_01_all.tif")
 
 # get shapefile and convert to same coordinate system
 # need to replace the #'s with a real file name
 boundary <- st_read('raw/Clip_work.shp')
-boundary <- st_transform(boundary, CRS(proj4string(zero)))
+boundary <- st_transform(boundary, CRS(proj4string(zero1)))
 ```
-
 
 ```{r visualise data}
 plot(zero1)
@@ -62,6 +63,22 @@ fosix1.crop <- mask(fosix1.crop, boundary)
 plot(fosix1.crop)
 ```
 
+```{r reassign sarc_clumps as sarc in 9 mos}
+# reclassify class 8 as class 2
+
+# create 2 column reclassification matrix for integer data
+matrix.data <- c(0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,2)
+matrix <- matrix(matrix.data, nrow = 9, ncol = 2, byrow = TRUE)
+matrix
+
+# use matrix for reclassifications
+nine1 <- reclassify(nine1, matrix)
+
+# visualise
+plot(nine1)
+```
+
+
 Landscape metrics package
 - article explaining: https://onlinelibrary.wiley.com/doi/full/10.1111/ecog.04617
 - documentation: https://cran.r-project.org/web/packages/landscapemetrics/landscapemetrics.pdf
@@ -76,20 +93,15 @@ check_landscape(fosix1.crop)
 # all ok
 ```
 
-```{r}
+
+```{r prepare for metric calculation}
 possible_metrics <- list_lsm() # list of all possible metrics
-view(possible_metrics)
+#view(possible_metrics)
 
-# calculate multiple metrics at once
-calculate_lsm()
-# either specify parameters for the types of metrics to calculate, or put a vector list metrics to calculate
-```
-
-```{r metrics for zero months}
 # make a list of rasters
-raster_names <- list(zero1, nine1, eighteen1, twentysix1, thirtyfour1, fortytwo1, fortysix1)
+raster_names <- list(zero1, nine1, eighteen1, twsix1.crop, thirtyfour1, fortytwo1, fosix1.crop)
 
-# make a function to add dataset names and categories to data
+# make a function to add dataset names and categsories to data
 add.metadata <- function(x){
   x %>% mutate(
   dataset = case_when(id == 1 ~ "zero",
@@ -100,21 +112,36 @@ add.metadata <- function(x){
                                 id == 6 ~ "fortytwo",
                                 id == 7 ~ "fortysix"),
   category = c("na", "spor","sarc", "grass", "mud", "water", "white_vege","road", 
-               "na", "spor", "sarc", "grass", "mud", "water", "white_vege", "sarc_clumps","road", 
+               "na", "spor", "sarc", "grass", "mud", "water", "white_vege","road", 
                "na", "spor","sarc", "grass", "mud", "water","sueda","road",  "white_vege",
-               "spor","sarc", "grass", "mud", "water","sueda", "white_vege","road", "na",
+               "spor","sarc", "grass", "mud", "water","sueda", "road","white_vege",
                "na", "spor","sarc","grass", "mud", "water","sueda","road", "white_vege",
                "na", "spor","sarc","grass", "mud", "water","algae","road", "white_vege", "sueda",
-               "spor","sarc","grass", "mud", "water","sueda","road", "white_vege", "na"))
+               "spor","sarc","grass", "mud", "water","sueda","road", "white_vege")) %>% 
+  filter(category != "na") # remove na data
 }
+# no na for 26 mos / 46 mos due to cropping
 
 
-# apply functions
+# function for adding metadata for landscape metrics
+add.meta.land <- function(x){
+  x %>% mutate(
+  dataset = case_when(id == 1 ~ "zero",
+                                id == 2 ~ "nine",
+                                id == 3 ~ "eighteen",
+                                id == 4 ~ "twentysix",
+                                id == 5 ~ "thirtyfour",
+                                id == 6 ~ "fortytwo",
+                                id == 7 ~ "fortysix"))
+}
+```
 
-# CALCULATE CLASS METRICS
+```{r calculate patch metrics}
+# apply functions to all datasets at once - note that each takes minutes
 
+# CLASS METRICS
 # area and edge metrics
-area.means <- lapply(raster_names, lsm_c_area_mn) %>% bind_rows(.id = "id") %>% add.metadata() # patch area, mean
+area.means <- lapply(raster_names, lsm_c_area_mn) %>% bind_rows(.id = "id") %>% add.metadata()  # patch area, mean
 area.sds <- lapply(raster_names, lsm_c_area_sd) %>% bind_rows(.id = "id") %>% add.metadata() # patch area, sd
 area.totals <- lapply(raster_names, lsm_c_ca) %>% bind_rows(.id = "id") %>% add.metadata() # total class area
 
@@ -137,138 +164,123 @@ contig.sds <- lapply(raster_names, lsm_c_contig_sd) %>% bind_rows(.id = "id") %>
 shape.mns <- lapply(raster_names, lsm_c_shape_mn) %>% bind_rows(.id = "id") %>% add.metadata() # shape index, mean
 shape.sds <- lapply(raster_names, lsm_c_shape_sd) %>% bind_rows(.id = "id") %>% add.metadata() # shape index, sd
 
+
+# need to put landscape metrics in a diff table- not compatible - so recode
+
 # LANDSCAPE METRICS
 # aggregation metrics
-contags <- lapply(raster_names, lsm_l_contag) %>% bind_rows(.id = "id") %>% add.metadata() # contagion
+contags <- lapply(raster_names, lsm_l_contag) %>% bind_rows(.id = "id") %>% add.meta.land() # contagion
 
 # diversity metrics
-shan.divs <- lapply(raster_names, lsm_l_shdi) %>% bind_rows(.id = "id") %>% add.metadata() # shannon diversity
-shan.evens <- lapply(raster_names, lsm_l_shei) %>% bind_rows(.id = "id") %>% add.metadata() # shannon evenness 
+shan.divs <- lapply(raster_names, lsm_l_shdi) %>% bind_rows(.id = "id") %>% add.meta.land() # shannon diversity
+shan.evens <- lapply(raster_names, lsm_l_shei) %>% bind_rows(.id = "id") %>% add.meta.land() # shannon evenness 
 
 
 
 
 
 
-# make this into a function
-patch_metrics <- function(input, output){
-  # CALCULATE CLASS METRICS
-  # area and edge metrics
-  area.mn <- lsm_c_area_mn(input) # patch area, mean
-  area.sd <- lsm_c_area_sd(input) # patch area, sd
-  area.total <- lsm_c_ca(input) # total class area
-  # core area metrics
-  core.mn <- lsm_c_cai_mn(input) # core area, mean - decide which of the two core area     metrics to use
-  core.sd <- lsm_c_cai_sd(input) # core area, sd
-  core2.mn <- lsm_c_core_mn(input) # core area, mean
-  core2.sd <- lsm_c_core_sd(input) # core area, sd
-  # aggregation metrics
-  np <- lsm_c_np(input) # number of patches
-  cohesion <- lsm_c_cohesion(input) # cohesion
-  enn.mn <- lsm_c_enn_mn(input) # euclidean nearest neighbour distance, mean
-  enn.sd <- lsm_c_enn_sd(input) # euclidean nearest neighbour distance, sd
-  clumpy <- lsm_c_clumpy(input) # clumpiness
-  # shape metrics
-  contig.mn <- lsm_c_contig_mn(input) # contiguity, mean
-  contig.sd <- lsm_c_contig_sd(input) # contiguity, sd
-  shape.mn <- lsm_c_shape_mn(input) # shape index, mean
-  shape.sd <- lsm_c_shape_sd(input) # shape index, sd
-  # CALCULATE LANDSCAPE METRICS
-  # aggregation metrics
-  contag <- lsm_l_contag(input) # contagion
-  # diversity metrics
-  shan.div <- lsm_l_shdi(input) # shannon's diversity
-  shan.even <- lsm_l_shei(input) # shannon's evenness
-  
-  output <- rbind(area.mn, area.sd, area.total, core.mn, core.sd, core2.mn, core2.sd, np, cohesion, enn.mn, enn.sd, clumpy, contig.mn, contig.sd, shape.mn, shape.sd, contag, shan.div, shan.even) # bind all outputs into one tibble
-}
-# note this function takes over 20 mins to run 
+# combine outputs   
+allpatchc <- rbind(area.means, area.sds, area.totals, core.mns, core.sds, cai.mns, cai.sds, nps, cohesions, enn.mns, enn.sds, clumpys, contig.mns, contig.sds, shape.mns, shape.sds) # bind all class metric outputs into one tibble
 
-
-
-# add class names to each dataset
-# 0 mos "na", "spor","sarc", "grass", "mud", "water", "white_vege","road"
-zero_patches <- zero_patches %>% 
-  mutate(category = case_when(class == 0 ~ "na", 
-                              class == 1 ~ "spor",
-                              class == 2 ~ "sarc",
-                              class == 3 ~ "grass",
-                              class == 4 ~ "mud",
-                              class == 5 ~ "water",
-                              class == 6 ~ "white_vege",
-                              class == 7 ~ "road"))
-
-# 9 mos "na", "spor", "sarc", "grass", "mud", "water", "white_vege", "sarc_clumps","road"
-nine_patches <- nine_patches %>% 
-  mutate(category = case_when(class == 0 ~ "na", 
-                              class == 1 ~ "spor",
-                              class == 2 ~ "sarc",
-                              class == 3 ~ "grass",
-                              class == 4 ~ "mud",
-                              class == 5 ~ "water",
-                              class == 6 ~ "white_vege",
-                              class == 7 ~ "sarc_clumps",
-                              class == 8 ~ "road"))
-
-# 18 mos "na", "spor","sarc", "grass", "mud", "water","sueda","road",  "white_vege"
-
-
-# 26 mos "spor","sarc", "grass", "mud", "water","sueda", "white_vege","road", "na"
-# dont think this has class 0, NA at end instead?
-
-
-# 34 mos "na", "spor","sarc","grass", "mud", "water","sueda","road", "white_vege"
-
-
-# 42mos "na", "spor","sarc","grass", "mud", "water","algae","road", "white_vege", "sueda"
-
-# 46 mos "spor","sarc","grass", "mud", "water","sueda","road", "white_vege", "na"
-# dont think this has class 0, NA at end instead?
-
-
-# then bind the diff datasets together
-allpatch <- rbind(zero_patches, nine_patches, eighteen_patches, twentysix_patches, thirtyfour_patches, fortytwo_patches, fortysix_patches)
+allpatchl <- rbind(contags, shan.divs, shan.evens)
 
 # then change to wide format with each patch metric as its own column
-allpatch.w <- allpatch %>% dplyr::select(Dataset, Scale, Class, Average) %>% pivot_wider(names_from = Class, values_from = Average)
+# add numerical column for dataset (months since restoration)
+allpatch.w <- allpatchc %>% dplyr::select(metric, value, dataset, category) %>% pivot_wider(names_from = metric, values_from = value) %>% 
+  mutate(months = case_when(dataset == "zero" ~ 0,
+                            dataset == "nine" ~ 9,
+                            dataset == "eighteen" ~ 21,
+                            dataset == "twentysix" ~ 26,
+                            dataset == "thirtyfour" ~ 34,
+                            dataset == "fortytwo" ~ 42,
+                            dataset == "fortysix" ~ 46))
 
-
-
-# CLASS METRICS
-# area and edge metrics
-area.mn <- lsm_c_area_mn(zero1) # patch area, mean
-area.sd <- lsm_c_area_sd(zero1) # patch area, sd
-area.total <- lsm_c_ca(zero1) # total class area
-# core area metrics
-core.mn <- lsm_c_cai_mn(zero1) # core area, mean - decide which of the two core area metrics to use
-core.sd <- lsm_c_cai_sd(zero1) # core area, sd
-core2.mn <- lsm_c_core_mn(zero1) # core area, mean
-core2.sd <- lsm_c_core_sd(zero1) # core area, sd
-# aggregation metrics
-np <- lsm_c_np(zero1) # number of patches
-cohesion <- lsm_c_cohesion(zero1) # cohesion
-enn.mn <- lsm_c_enn_mn(zero1) # euclidean nearest neighbour distance, mean
-enn.sd <- lsm_c_enn_sd(zero1) # euclidean nearest neighbour distance, sd
-clumpy <- lsm_c_clumpy(zero1) # clumpiness
-# shape metrics
-contig.mn <- lsm_c_contig_mn(zero1) # contiguity, mean
-contig.sd <- lsm_c_contig_sd(zero1) # contiguity, sd
-shape.mn <- lsm_c_shape_mn(zero1) # shape index, mean
-shape.sd <- lsm_c_shape_sd(zero1) # shape index, sd
-# LANDSCAPE METRICS
-# aggregation metrics
-contag <- lsm_l_contag(zero1) # contagion
-# diversity metrics
-shan.div <- lsm_l_shdi(zero1) # shannon's diversity
-shan.even <- lsm_l_shei(zero1) # shannon's evenness
-
-
-zero_patches <- rbind(area.mn, area.sd, area.total, core.mn, core.sd, core2.mn, core2.sd, np, cohesion, enn.mn, enn.sd, clumpy, contig.mn, contig.sd, shape.mn, shape.sd, contag, shan.div, shan.even)
+allpatchl.w <- allpatchl %>% dplyr::select(metric, value, dataset) %>% pivot_wider(names_from = metric, values_from = value) %>% 
+  mutate(months = case_when(dataset == "zero" ~ 0,
+                            dataset == "nine" ~ 9,
+                            dataset == "eighteen" ~ 21,
+                            dataset == "twentysix" ~ 26,
+                            dataset == "thirtyfour" ~ 34,
+                            dataset == "fortytwo" ~ 42,
+                            dataset == "fortysix" ~ 46))
 ```
 
 
+```{r import patch metrics data}
+# generated from above script. Just because it takes so long to generate and doesn't work on computers with insufficient memory
+
+allpatch.w <- read.csv("export/csv/classmetrics.csv")
+allpatchl.w <- read.csv("export/csv/landmetrics.csv")
+```
+
+
+probably just visualise saltmarsh classes! could have made an overall saltmarsh class first... but didn't. can consider later if we really want it and want this to run for another 3 1/2 hours
+
+
+```{r visualise trends over time}
+# mean patch area
+ggplot(allpatch.w, aes(x = months, y = area_mn, color = category)) +
+  geom_line()
+
+# mean class area
+ggplot(allpatch.w, aes(x = months, y = ca, color = category)) +
+  geom_line()
+
+# mean core area
+ggplot(allpatch.w, aes(x = months, y = core_mn, color = category)) +
+  geom_line()
+
+# core area index (cai)
+ggplot(allpatch.w, aes(x = months, y = cai_mn, color = category)) +
+  geom_line()
+
+# number of patches
+ggplot(allpatch.w, aes(x = months, y = np, color = category)) +
+  geom_line()
+
+# cohesion
+ggplot(allpatch.w, aes(x = months, y = cohesion, color = category)) +
+  geom_line()
+
+# euclidean nearest neighbour average distance between patches
+ggplot(allpatch.w, aes(x = months, y = enn_mn, color = category)) +
+  geom_line()
+
+# clumpiness
+ggplot(allpatch.w, aes(x = months, y = clumpy, color = category)) +
+  geom_line()
+
+s# contiguity
+ggplot(allpatch.w, aes(x = months, y = contig_mn, color = category)) +
+  geom_line()
+
+# mean shape index
+ggplot(allpatch.w, aes(x = months, y = shape_mn, color = category)) +
+  geom_line()
+
+
+
+# landscape metrics
+
+# contagions
+ggplot(allpatchl.w, aes(x = months, y = contag)) +
+  geom_line()
+
+# shannon diversitys
+ggplot(allpatchl.w, aes(x = months, y = shdi)) +
+  geom_line()
+
+# shannon evenness
+ggplot(allpatchl.w, aes(x = months, y = shei)) +
+  geom_line()
+```
+
+
+
+
+
+could then try regressions etc 
 ```{r}
-# combine outputs
-rbind(lsm_p_area(x), lsm_l_ai(x))
 ```
 
