@@ -14,9 +14,322 @@ knitr::opts_knit$set(root.dir = 'C:/Users/danal/OneDrive - UNSW/Desktop/WRL/R')
 
 ```{r get packages}
 library(tidyverse)
+library(raster)
+library(sf)
 ```
 
 ```{r get data}
+dem <- raster("raw/20170213 kooragang island rgb_dsm.tif")
 
+# cropped maps
+zero1 <- raster("raw/0mos_classified_0_1_all.tif")
+nine1 <- raster("raw/9mos_classified_01_all_new.tif")
+eighteen1 <- raster("raw/18mos_classified_01_all.tif")
+twentysix1 <- raster("raw/26mos_classified_01_all.tif")
+thirtyfour1 <- raster("raw/34mos_classified_01_all.tif")
+fortytwo1 <- raster("raw/42mos_classified_01_all.tif")
+fortysix1 <- raster("raw/46mos_classified_01_all.tif")
+
+# boundary for clipping 
+boundary <- st_read('raw/Clip_work.shp')
+boundary <- st_transform(boundary, CRS(proj4string(zero1)))
+```
+
+
+```{r prepare data}
+# for 9 months, reclassify class 8 (sarc clumps) as class 2 (sarc)
+
+# create 2 column reclassification matrix for integer data
+matrix.data <- c(0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,2)
+matrix <- matrix(matrix.data, nrow = 9, ncol = 2, byrow = TRUE)
+matrix
+
+# use matrix for reclassifications
+nine1 <- reclassify(nine1, matrix)
+
+
+
+# clip all rasters to same extent
+zero1c <- crop(zero1, extent(boundary)) 
+zero1c <- mask(zero1c, boundary)
+
+nine1c <- crop(nine1, extent(boundary)) 
+nine1c <- mask(nine1c, boundary)
+
+eighteen1c <- crop(eighteen1, extent(boundary)) 
+eighteen1c <- mask(eighteen1c, boundary)
+
+twentysix1c <- crop(twentysix1, extent(boundary)) 
+twentysix1c <- mask(twentysix1c, boundary)
+
+thirtyfour1c <- crop(thirtyfour1, extent(boundary)) 
+thirtyfour1c <- mask(thirtyfour1c, boundary)
+
+fortytwo1c <- crop(fortytwo1, extent(boundary)) 
+fortytwo1c <- mask(fortytwo1c, boundary)
+
+fortysix1c <- crop(fortysix1, extent(boundary)) 
+fortysix1c <- mask(fortysix1c, boundary)
+
+demc <- crop(dem, extent(boundary)) 
+demc <- mask(demc, boundary)
+
+
+
+# resample dem to same (coarser) resolution as classified images
+# also resample all datasets to nine1c as they are all slightly different 
+dem_res <- raster::resample(demc, nine1c, method = "bilinear")
+zero_res <- raster::resample(zero1c, nine1c, method = "ngb")
+eighteen_res <- raster::resample(eighteen1c, nine1c, method = "ngb")
+twentysix_res <- raster::resample(twentysix1c, nine1c, method = "ngb")
+thirtyfour_res <- raster::resample(thirtyfour1c, nine1c, method = "ngb")
+fortytwo_res <- raster::resample(fortytwo1c, nine1c, method = "ngb")
+fortysix_res <- raster::resample(fortysix1c, nine1c, method = "ngb")
+
+
+# create list of datasets
+raster_names2 <- list(zero_res, nine1c, eighteen_res, twentysix_res, thirtyfour_res, fortytwo_res, fortysix_res)
+```
+
+
+```{r visualise}
+plot(dem_res)
+
+plot(zero_res)
+plot(nine1c)
+plot(eighteen_res)
+plot(twentysix_res)
+plot(thirtyfour_res)
+plot(fortytwo_res)
+plot(fortysix_res)
+```
+
+
+```{r calculate zonal stats}
+zonal_stats <- function(dataset, name){
+  zmean <- zonal(dem_res, dataset, fun = "mean", digits = 2)
+  zsd <- zonal(dem_res, dataset, fun = "sd", digits = 2)
+  zmin <- zonal(dem_res, dataset, fun = "min", digits = 2)
+  zmax <- zonal(dem_res, dataset, fun = "max", digits = 2)
+  zcount <- zonal(dem_res, dataset, fun = "count", digits = 2, na.rm = TRUE)
+  name <- rbind(zmean, zsd, zmin, zmax)
+}
+
+ zonal(dem_res, zero_res, fun = "mean", digits = 2)
+ 
+ zonal_stats(zero1c, zero_zonal)
+
+
+ 
+ 
+ 
+
+zonal_mean <- function(dataset){
+  zonal(dem_res, dataset, fun = "mean", digits = 2)
+}
+
+
+ 
+means <- lapply(raster_names2,  zonal_mean) %>% bind_rows(.id = "id")
+```
+
+# Zonal statistics
+
+count is irrelevant - remove
+
+```{r zero months}
+zero_mean <- zonal(dem_res, zero_res, fun = "mean", digits = 2)
+zero_sd <- zonal(dem_res, zero_res, fun = "sd", digits = 2)
+zero_min <- zonal(dem_res, zero_res, fun = "min", digits = 2)
+zero_max <- zonal(dem_res, zero_res, fun = "max", digits = 2)
+zero_count <- zonal(dem_res, zero_res, fun = "count", digits = 2)
+
+zero_demstats <- combine(zero_mean, zero_sd, zero_min, zero_max, zero_count) %>% 
+  mutate(dataset = 0)
+zero_demstats$source <-  recode(zero_demstats$source, 
+         "zero_mean" = "mean",
+         "zero_sd" = "sd",
+         "zero_min" = "min",
+         "zero_max" = "max",
+         "zero_count" = "count") 
+zero_demstats$category <- c("na", "spor","sarc", "grass", "mud", "water", "white_vege","road")
+```
+
+```{r nine months}
+nine_mean <- zonal(dem_res, nine1c, fun = "mean", digits = 2)
+nine_sd <- zonal(dem_res, nine1c, fun = "sd", digits = 2)
+nine_min <- zonal(dem_res, nine1c, fun = "min", digits = 2)
+nine_max <- zonal(dem_res, nine1c, fun = "max", digits = 2)
+nine_count <- zonal(dem_res, nine1c, fun = "count", digits = 2)
+
+nine_demstats <- combine(nine_mean, nine_sd, nine_min, nine_max, nine_count) %>% 
+  mutate(dataset = 9)
+nine_demstats$source <-  recode(nine_demstats$source, 
+         "nine_mean" = "mean",
+         "nine_sd" = "sd",
+         "nine_min" = "min",
+         "nine_max" = "max",
+         "nine_count" = "count") 
+nine_demstats$category <- c("na", "spor", "sarc",  "grass", "mud", "water", "white_vege", "road") # add categories
+```
+
+```{r eighteen months}
+eighteen_mean <- zonal(dem_res, eighteen_res, fun = "mean", digits = 2)
+eighteen_sd <- zonal(dem_res, eighteen_res, fun = "sd", digits = 2)
+eighteen_min <- zonal(dem_res, eighteen_res, fun = "min", digits = 2)
+eighteen_max <- zonal(dem_res, eighteen_res, fun = "max", digits = 2)
+eighteen_count <- zonal(dem_res, eighteen_res, fun = "count", digits = 2)
+
+eighteen_demstats <- combine(eighteen_mean, eighteen_sd, eighteen_min, eighteen_max, eighteen_count) %>% 
+  mutate(dataset = 18)
+eighteen_demstats$source <-  recode(eighteen_demstats$source, 
+         "eighteen_mean" = "mean",
+         "eighteen_sd" = "sd",
+         "eighteen_min" = "min",
+         "eighteen_max" = "max",
+         "eighteen_count" = "count")
+eighteen_demstats$category <- c("na", "spor","sarc", "grass", "mud", "water","sueda","road",  "white_vege") # add categories
+```
+
+```{r twenty six months}
+twentysix_mean <- zonal(dem_res, twentysix_res, fun = "mean", digits = 2)
+twentysix_sd <- zonal(dem_res, twentysix_res, fun = "sd", digits = 2)
+twentysix_min <- zonal(dem_res, twentysix_res, fun = "min", digits = 2)
+twentysix_max <- zonal(dem_res, twentysix_res, fun = "max", digits = 2)
+twentysix_count <- zonal(dem_res, twentysix_res, fun = "count", digits = 2)
+
+twentysix_demstats <- combine(twentysix_mean, twentysix_sd, twentysix_min, twentysix_max, twentysix_count) %>% 
+  mutate(dataset = 26)
+twentysix_demstats$source <-  recode(twentysix_demstats$source, 
+         "twentysix_mean" = "mean",
+         "twentysix_sd" = "sd",
+         "twentysix_min" = "min",
+         "twentysix_max" = "max",
+         "twentysix_count" = "count") 
+twentysix_demstats$category <- c("spor","sarc", "grass", "mud", "water","sueda", "road", "white_vege") # add categories
+```
+
+```{r thirty four months}
+thirtyfour_mean <- zonal(dem_res, thirtyfour_res, fun = "mean", digits = 2)
+thirtyfour_sd <- zonal(dem_res, thirtyfour_res, fun = "sd", digits = 2)
+thirtyfour_min <- zonal(dem_res, thirtyfour_res, fun = "min", digits = 2)
+thirtyfour_max <- zonal(dem_res, thirtyfour_res, fun = "max", digits = 2)
+thirtyfour_count <- zonal(dem_res, thirtyfour_res, fun = "count", digits = 2)
+
+thirtyfour_demstats <- combine(thirtyfour_mean, thirtyfour_sd, thirtyfour_min, thirtyfour_max, thirtyfour_count) %>% 
+  mutate(dataset = 34)
+thirtyfour_demstats$source <-  recode(thirtyfour_demstats$source, 
+         "thirtyfour_mean" = "mean",
+         "thirtyfour_sd" = "sd",
+         "thirtyfour_min" = "min",
+         "thirtyfour_max" = "max",
+         "thirtyfour_count" = "count") 
+thirtyfour_demstats$category <- c("spor","sarc","grass", "mud", "water","sueda","road", "white_vege") # add categories
+```
+
+```{r forty two months}
+fortytwo_mean <- zonal(dem_res, fortytwo_res, fun = "mean", digits = 2)
+fortytwo_sd <- zonal(dem_res, fortytwo_res, fun = "sd", digits = 2)
+fortytwo_min <- zonal(dem_res, fortytwo_res, fun = "min", digits = 2)
+fortytwo_max <- zonal(dem_res, fortytwo_res, fun = "max", digits = 2)
+fortytwo_count <- zonal(dem_res, fortytwo_res, fun = "count", digits = 2)
+
+fortytwo_demstats <- combine(fortytwo_mean, fortytwo_sd, fortytwo_min, fortytwo_max, fortytwo_count) %>% 
+  mutate(dataset = 42)
+fortytwo_demstats$source <-  recode(fortytwo_demstats$source, 
+         "fortytwo_mean" = "mean",
+         "fortytwo_sd" = "sd",
+         "fortytwo_min" = "min",
+         "fortytwo_max" = "max",
+         "fortytwo_count" = "count") 
+fortytwo_demstats$category <- c("na", "spor","sarc","grass", "mud", "water","algae","road", "white_vege", "sueda") # add categories
+```
+
+```{r forty six months}
+fortysix_mean <- zonal(dem_res, fortysix_res, fun = "mean", digits = 2)
+fortysix_sd <- zonal(dem_res, fortysix_res, fun = "sd", digits = 2)
+fortysix_min <- zonal(dem_res, fortysix_res, fun = "min", digits = 2)
+fortysix_max <- zonal(dem_res, fortysix_res, fun = "max", digits = 2)
+fortysix_count <- zonal(dem_res, fortysix_res, fun = "count", digits = 2)
+
+fortysix_demstats <- combine(fortysix_mean, fortysix_sd, fortysix_min, fortysix_max, fortysix_count) %>% 
+  mutate(dataset = 46)
+fortysix_demstats$source <-  recode(fortysix_demstats$source, 
+         "fortysix_mean" = "mean",
+         "fortysix_sd" = "sd",
+         "fortysix_min" = "min",
+         "fortysix_max" = "max",
+         "fortysix_count" = "count") 
+fortysix_demstats$category <- c("spor","sarc","grass", "mud", "water","sueda","road", "white_vege") # add categories
+```
+
+```{r combine}
+allzonal <- rbind(zero_demstats, nine_demstats, eighteen_demstats, twentysix_demstats, thirtyfour_demstats, fortytwo_demstats, fortysix_demstats) %>% 
+  filter(category %in% c("spor", "sarc", "sueda"))
+```
+
+```{r make into wide format, add SE column}
+allzonal_wide <- allzonal %>% dplyr::select(mean, source, dataset, category) %>%
+  pivot_wider(names_from = source, values_from = mean)
+
+allzonal_wide <- allzonal_wide %>% mutate(se = sd/sqrt(count))
+```
+
+
+# plots
+
+does the elevation that different saltmarsh grows at differ between species and over time?
+
+```{r function}
+plot_elev <- function(variable){
+  ggplot(allzonal_wide) +
+  aes(x = dataset, y = variable, color = category, linetype = category) +
+  geom_line(size = 3) +
+  scale_color_viridis(name = "Category", labels = c("Sarcocornia", "Sporobolus", "Suaeda"), discrete = TRUE, option = "turbo") +
+    scale_linetype_manual(name = "Category", labels = c("Sarcocornia", "Sporobolus", "Suaeda"), values=c(1,2,3,4)) +
+    labs(x = "Date", y = "Mean elevation (m)", color = "Category", linetype = "Category") +
+  theme_classic() +
+  guides(color = guide_legend(byrow = TRUE)) + # for legend spacing 
+  theme(axis.text = element_text(size = 40),
+        axis.title = element_text(size = 54),
+        legend.text = element_text(size = 30),
+        legend.title = element_text(size = 36),
+        plot.margin = margin(20,10,10,10),
+        legend.spacing.y = unit(1, "cm"),
+        legend.key.size = unit(3,"line"))
+}
+```
+
+
+```{r mean elevation}
+plot_elev(allzonal_wide$mean) +  
+  geom_ribbon(aes(ymin = mean - sd, ymax = mean + sd), alpha = 0.1) 
+```
+
+```{r max}
+plot_elev(allzonal_wide$max) 
+```
+
+```{r min}
+plot_elev(allzonal_wide$min) 
+```
+
+these are unhelpful, would like to figure out how to calculate confidence intervals, more relevant
+
+
+# stats?
+
+
+
+also consider clipping e.g. final image by each saltmarsh class, and then mapping frequency distribution at different elevations
+
+
+
+regress growth against environmental conditions?
+
+use one_scale, variable made in "class_areas" script
+
+```{r}
+one_scale <- one_scale %>% mutate(growth = )
 ```
 
