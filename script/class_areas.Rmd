@@ -33,15 +33,6 @@ thirtyfour1 <- raster("raw/34mos_classified_01_all.tif")
 fortytwo1 <- raster("raw/42mos_classified_01_all.tif")
 fortysix1 <- raster("raw/46mos_classified_01_all.tif")
 
-# cropped maps
-zero2 <- raster("raw/0mos_classified_crop.tif")
-nine2 <- raster("raw/9mos_classified_crop.tif")
-eighteen2 <- raster("raw/18mos_classified_crop.tif")
-twentysix2 <- raster("raw/26mos_classified_crop.tif")
-thirtyfour2 <- raster("raw/34mos_classified_crop.tif")
-fortytwo2 <- raster("raw/42mos_classified_crop.tif")
-fortysix2 <- raster("raw/46mos_classified_crop.tif")
-
 
 # get shapefile and convert to same coordinate system
 boundary <- st_read('raw/Clip_work.shp')
@@ -59,14 +50,6 @@ plot(fortytwo1)
 plot(fortysix1) # background is labelled # 5 - need to remove
 
 plot(boundary)
-
-plot(zero2)
-plot(nine2)
-plot(eighteen2)
-plot(twentysix2)
-plot(thirtyfour2)
-plot(fortytwo2)
-plot(fortysix2)
 ```
 
 ```{r crop out background for 26 mos and 46 mos}
@@ -93,11 +76,9 @@ matrix
 
 # use matrix for reclassifications
 nine1 <- reclassify(nine1, matrix)
-nine2 <- reclassify(nine2, matrix)
 
 # visualise
 plot(nine1)
-plot(nine2)
 ```
 
 
@@ -335,173 +316,14 @@ combo_plot(one_scale)
 # export at 2100 x 1400
 ```
 
-also add line for total saltmarsh area?
+area trends
+- spor area initially decreases as some areas are no longer inundated enough, then increases somewhat as it expands in newly suitable areas
+- sueda area increases somewhat over time
+- sarc area increases rapidly and in a somewhat linear fashion over time
 
 
 
 
 
-# Only target area
-
-
-# Calculating areas - 0.1m resolution
-```{r 0 mos}
-# calculate number of cells in each class
-cells01 <- freq(zero2) # output is vectors
-cells0DF2 <- as.data.frame(cells01) # make this a dataframe
-cells0DF2$category <- c("na", "spor","sarc", "grass", "mud", "water", "white_vege","road") # add categories
-cells0DF2
-
-# determine cell size in map units
-res(zero2) # cell size is 0.1 x 0.1 (metres)
-
-# use this to calculate area of each class in hectares
-cells0DF2$area <- cells0DF2$count*0.1*0.1/10000
-
-cells0DF2 <- add2saltrow(cells0DF2,2,3)
-cells0DF2
-```
-
-
-```{r 9 mos}
-# 9 mos 
-# calculate number of cells in each class
-cells09 <- freq(nine2) # output is vectors
-cells9DF2 <- as.data.frame(cells09) # make this a dataframe
-cells9DF2$category <- c("na", "spor", "sarc",  "grass", "mud", "water", "white_vege", "road") # add categories
-cells9DF2
-
-# determine cell size in map units
-res(nine2) # cell size is 0.1 x 0.1 (metres)
-
-# use this to calculate area of each class in hectares
-cells9DF2$area <- cells9DF2$count*0.1*0.1/10000
-
-cells9DF2 <- add2saltrow(cells9DF2,2,3)
-cells9DF2
-```
-
-
-```{r 18 mos}
-# 18 mos
-# calculate number of cells in each class
-cells018 <- freq(eighteen2) # output is vectors
-cells18DF2 <- as.data.frame(cells018) # make this a dataframe
-cells18DF2$category <- c("na", "spor","sarc", "grass", "mud", "water","sueda","road",  "white_vege") # add categories
-cells18DF2
-
-# determine cell size in map units
-res(eighteen2) # cell size is 0.1 x 0.1 (metres)
-
-# use this to calculate area of each class in hectares
-cells18DF2$area <- cells18DF2$count*0.1*0.1/10000
-
-cells18DF2 <- addsaltrow(cells18DF2,2,3,7)
-cells18DF2
-```
-
-
-```{r 26 mos}
-# 26 mos 
-# calculate number of cells in each class
-cells026 <- freq(twentysix2) # output is vectors
-cells26DF2 <- as.data.frame(cells026) # make this a dataframe
-cells26DF2$category <- c("spor","sarc", "grass", "mud", "water","sueda", "road", "white_vege","na") # add categories
-cells26DF2
-
-# determine cell size in map units
-res(twentysix2) # cell size is 0.1 x 0.1 (metres)
-
-# use this to calculate area of each class in hectares
-cells26DF2$area <- cells26DF2$count*0.1*0.1/10000
-
-cells26DF2 <- addsaltrow(cells26DF2,1,2,6)
-cells26DF2
-```
-
-
-```{r 34 mos}
-# 34 mos 
-# calculate number of cells in each class
-cells034 <- freq(thirtyfour2) # output is vectors
-cells34DF2 <- as.data.frame(cells034) # make this a dataframe
-cells34DF2$category <- c("na", "spor","sarc","grass", "mud", "water","sueda","road", "white_vege") # add categories
-cells34DF2
-
-# determine cell size in map units
-res(thirtyfour2) # cell size is 0.1 x 0.1 (metres)
-
-# use this to calculate area of each class in hectares
-cells34DF2$area <- cells34DF2$count*0.1*0.1/10000
-
-cells34DF2 <- addsaltrow(cells34DF2,2,3,7)
-cells34DF2
-```
-
-
-```{r 42 mos}
-# 42 mos
-# calculate number of cells in each class
-cells042 <- freq(fortytwo2) # output is vectors
-cells42DF2 <- as.data.frame(cells042) # make this a dataframe
-cells42DF2$category <- c("na", "spor","sarc","grass", "mud", "water","algae","road", "white_vege", "sueda") # add categories
-cells42DF2
-
-# determine cell size in map units
-res(fortytwo2) # cell size is 0.1 x 0.1 (metres)
-
-# use this to calculate area of each class in hectares
-cells42DF2$area <- cells42DF2$count*0.1*0.1/10000
-
-cells42DF2 <- addsaltrow(cells42DF2,2,3,10)
-cells42DF2
-```
-
-
-```{r 46 mos}
-# 46 mos 
-# calculate number of cells in each class
-cells046 <- freq(fortysix2) # output is vectors
-cells46DF2 <- as.data.frame(cells046) # make this a dataframe
-cells46DF2$category <- c("spor","sarc","grass", "mud", "water","sueda","road", "white_vege", "na") # add categories
-cells46DF2
-
-# determine cell size in map units
-res(fortysix2) # cell size is 0.1 x 0.1 (metres)
-
-# use this to calculate area of each class in hectares
-cells46DF2$area <- cells46DF2$count*0.1*0.1/10000
-
-cells46DF2 <- addsaltrow(cells46DF2,1,2,6)
-cells46DF2
-```
-
-
-# Combine datasets
-
-```{r combine datasets}
-one_scale2 <- combine(cells0DF2, cells9DF2, cells18DF2, cells26DF2, cells34DF2, cells42DF2, cells46DF2) %>% 
-  subset(value != 0, value != "NA") #remove irrelevant values
-
-# change source column to a date column
-one_scale2$source <- recode(one_scale2$source,
-         "cells0DF2" = "2017/02/03",
-         "cells9DF2" = "2017/10/19",
-         "cells18DF2" = "2018/11/09",
-         "cells26DF2" = "2019/04/30",
-         "cells34DF2" = "2019/12/18",
-         "cells42DF2" = "2020/08/13",
-         "cells46DF2" = "2020/12/08",) %>% as.Date() 
-one_scale2 <- rename(one_scale2, date = source) # rename source column to date
-one_scale2 <- one_scale2 %>% mutate(Scale = 0.1) # add column for scale
-  
-one_scale2
-```
-
-
-```{r plot}
-combo_plot(one_scale2)
-# 2100 x 1400
-```
 
 
