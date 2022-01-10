@@ -322,7 +322,31 @@ area trends
 - sarc area increases rapidly and in a somewhat linear fashion over time
 
 
+# Quantify area changes
 
+All trends are relatively linear, without significant variability, so calculate change over time as 46 mos minus 0 mos area.
+```{r}
+# sporobolus
+spor <- one_scale %>% filter(category == "spor")
+spor[7,]$area - spor[1,]$area # net area change
+(spor[7,]$area - spor[1,]$area)/spor[1,]$area * 100 # percentage area change
+
+# sarcocornia
+sarc <- one_scale %>% filter(category == "sarc")
+sarc[7,]$area - sarc[1,]$area # net area change
+(sarc[7,]$area - sarc[1,]$area)/sarc[1,]$area * 100 # percentage area change
+
+# suaeda
+sueda <- one_scale %>% filter(category == "sueda")
+# assume zero area to start with, as unable to classify sueda until 18 months
+sueda[5,]$area - 0 # net area change
+# can't do % change as we're assuming it started at 0 ha
+
+# all saltmarsh
+saltmarsh <- one_scale %>% filter(category == "saltmarsh")
+saltmarsh[7,]$area - saltmarsh[1,]$area # net area change
+(saltmarsh[7,]$area - saltmarsh[1,]$area)/saltmarsh[1,]$area * 100
+```
 
 
 
