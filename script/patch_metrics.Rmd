@@ -17,6 +17,8 @@ library(tidyverse)
 library(raster)
 library(sf)
 library(landscapemetrics)
+library(viridis)
+library(ggpubr)
 
 # note that landscapemetrics requires a lot of memory and may come up with an "rcpp" package error if the hardware is not sufficient. Try with a computer with more memory in that case! 
 
@@ -215,67 +217,154 @@ allpatchl.w <- read.csv("export/csv/landmetrics.csv")
 ```
 
 
+# visualisation
+
 probably just visualise saltmarsh classes! could have made an overall saltmarsh class first... but didn't. can consider later if we really want it and want this to run for another 3 1/2 hours
+
+```{r subset for only saltmarsh classes}
+allpatch.ws <- allpatch.w %>% filter(category %in% c("spor", "sarc", "sueda")) %>% mutate(category = as.factor(category))
+
+# can't do this for landscape metrics, as it's  about the entire landscape with all classes included
+```
+
+```{r function for plotting}
+patch_plot <- function(y_var, ylab){
+  allpatch.ws %>% 
+  ggplot() +
+    aes(x = months, y = y_var, color = category, linetype = category) +
+  geom_line(size = 3) +
+    scale_color_manual(values = c("#1fbfad", "#f2c80c", "#5c0b1f"), labels = c("Sporobolus virginicus","Sarcocornia quinqueflora","Suaeda australis")) +
+    scale_linetype_manual(values=c(2,3,4), labels = c("Sporobolus virginicus","Sarcocornia quinqueflora","Suaeda australis")) +
+    labs(x = "Months since restoration", y = ylab, color = "", linetype = "") +
+  theme_classic() +
+  theme(text = element_text(size = 36),
+        axis.text = element_text(size = 36),
+        axis.title = element_text(size = 40),
+        legend.text = element_text(size = 36, face = "italic"),
+        plot.margin = margin(20,10,10,10),
+        legend.key.size = unit(6,"line"),
+        axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)))
+}
+
+land_plot <- function(y_var, ylab){
+  allpatchl.w %>% 
+  ggplot() +
+    aes(x = months, y = y_var) +
+  geom_line(size = 3) +
+    labs(x = "Months since restoration", y = ylab) +
+  theme_classic() +
+  theme(axis.text = element_text(size = 40),
+        axis.title = element_text(size = 48),
+        plot.margin = margin(20,10,10,10))
+}
+```
 
 
 ```{r visualise trends over time}
 # mean patch area
-ggplot(allpatch.w, aes(x = months, y = area_mn, color = category)) +
-  geom_line()
+p_area_mn <- patch_plot(allpatch.ws$area_mn * 100 * 100, "Mean patch area (cm2)") + labs(x = "")
+p_area_mn
+# average patch area is stable for spor and sueda and increases over time for sarc 
+# this makes sense, as spor is usually one large connected clump that grows from itself, sueda is generally lots of spaced out clumps, and sarc colonises an area by making lots of small clumps that expand into one another
 
-# mean class area
-ggplot(allpatch.w, aes(x = months, y = ca, color = category)) +
-  geom_line()
 
-# mean core area
-ggplot(allpatch.w, aes(x = months, y = core_mn, color = category)) +
-  geom_line()
+# don't need mean class area, as I calculate this in the class area script
+
+
+# mean core area - don't include as trends are exactly the same as patch area
+
 
 # core area index (cai)
-ggplot(allpatch.w, aes(x = months, y = cai_mn, color = category)) +
-  geom_line()
+p_cai_mn <- patch_plot(allpatch.ws$cai_mn, "Mean core area index") + labs(x = "")
+p_cai_mn
+# core area index fluctuates for spor and sueda, possibly reflecting differences in classification?
+# core area index increases steadily for sarc, probably reflecting increasing patch size
+# this is the percentage of core area in relation to patch area
+
 
 # number of patches
-ggplot(allpatch.w, aes(x = months, y = np, color = category)) +
-  geom_line()
+p_np <- patch_plot(allpatch.ws$np / 1000, "No. patches (x 1000)") + labs(x = "")
+p_np
+# variability probably reflects differences in classification
+# however sarc is hump shaped as expected, in the middle lots of new separate clumps are forming, and they later merge
+# spor and sueda are relatively consistent but variable
+# sueda has more patches than spor even though its area is far smaller - probably because patch size is so small. However I think there should not be this many patches, sueda has been overestimated, and the small patch size is what made it difficult to pick up on these errors in validation. 
 
 # cohesion
-ggplot(allpatch.w, aes(x = months, y = cohesion, color = category)) +
-  geom_line()
+p_cohesion <- patch_plot(allpatch.ws$cohesion, "Cohesion (%)") + labs(x = "")
+p_cohesion 
+# connectedness of patches - locally aggregated (high values) or isolated (low values)
+# high numbers for all - all are relatively aggregated
+# spor is consistent and near 100% - as it grows it basically one interconnected clump
+# sarc decreases and then increases - reflecting individual clump growth then connection
+# sueda is consistently lower - reflecting that clumps do not generally touch one another. but increases over time - new clumps generally grow near existing ones
 
 # euclidean nearest neighbour average distance between patches
-ggplot(allpatch.w, aes(x = months, y = enn_mn, color = category)) +
-  geom_line()
+p_enn <- patch_plot(allpatch.ws$enn_mn, "Mean ENN distance (m)") + labs(x = "")
+p_enn
+# distance to the nearest neighbouring patch
+# greater distances for sueda - reflects that patches are more spread out
+# sueda decreases over time (but variable) - new patches growing together
+# sarc decreases somewhat and then increases - decrease reflects that patches are growing more closely together, increase might be because nearby patches merge and therefore have to find a further away patch to be measured against?
+# spor is quite stable
 
 # clumpiness
-ggplot(allpatch.w, aes(x = months, y = clumpy, color = category)) +
-  geom_line()
+p_clumpy <- patch_plot(allpatch.ws$clumpy, "Clumpiness (0-1)") + labs(x = "")
+p_clumpy 
+# measure of how many adjacent patches are of the same class, relative to what would be expected if classes were randomly distributed
+# sueda is lower - reflecting that patches are more spread out
+# sueda and spor are consistent
+# sarc initially decreases (new patches forming separate to one another), then increases (patches clumping together)
 
-s# contiguity
-ggplot(allpatch.w, aes(x = months, y = contig_mn, color = category)) +
-  geom_line()
+# contiguity
+p_contig <- patch_plot(allpatch.ws$contig_mn, "Mean contiguity (0-1)")
+p_contig
+# shape metric reflecting connectivity of cells within patches
+# spor and sueda are relatively consistent but variable over time, maybe reflecting classification differences
+# sarc increases over time, suggesting patches become more regular shaped - perhaps strange shaped clumps merge together into more regular shaped clumps?
 
 # mean shape index
-ggplot(allpatch.w, aes(x = months, y = shape_mn, color = category)) +
-  geom_line()
-
+p_shape_mn <- patch_plot(allpatch.ws$shape_mn, "Mean shape index")
+p_shape_mn
+# ratio between actual perimeter and theoretical minimum perimeter - ie roundness (1 = perfectly round, increases as becomes less round)
+# sarc and spor are relatively consistent, decrease slightly over time - perhaps clumps initially grow in weird shapes and progress towards more circular shapes
+# spor has greater values than sarc - sarc tends to grow in more regular shapes?
+# sueda is around the same as sarc, more variable but then increases a lot at 46 mos - this may be from the classification rather than reflecting reality?
 
 
 # landscape metrics
 
 # contagions
-ggplot(allpatchl.w, aes(x = months, y = contag)) +
-  geom_line()
+p_contagion <- land_plot(allpatchl.w$contag, "Contagion (%)") 
+p_contagion 
+# measure of probability that adjacent cells belong to the same class, where 0 = cells unevenly distributed and 100 = cells perfectly randomly/evenly distributed
+# related to how clumped together individual classes are and how interspersed different classes are
+# decreases over time, potentially driven by sarc becoming more clumped together and more distinct from mud
 
-# shannon diversitys
-ggplot(allpatchl.w, aes(x = months, y = shdi)) +
-  geom_line()
+# shannon diversity
+p_shdi <- land_plot(allpatchl.w$shdi, "Shannon's diversity")
+p_shdi
+# related to the number of classes and abundance of each
+# increases as the number of classes increases and as the evenness of classes increases
+# over time, the landscape has become more diverse, potentially because the area of each class has become more similar due to sarc growth and mud decrease?
 
 # shannon evenness
-ggplot(allpatchl.w, aes(x = months, y = shei)) +
-  geom_line()
+p_shei <- land_plot(allpatchl.w$shei, "Shannon's evenness (0-1)")
+p_shei 
+# ratio between actual shannon's diversity index and theoretical maximum shannon's diversity index- if all classes are evenly represented, would have a value of 1
+# stable over time, increases at 46 months but I think this is probably a product of the classification rather than reality (ie there was more water at 46 mos)
 ```
 
+
+```{r combine plots}
+# combine class level patch plots with a common legend
+ggarrange(p_area_mn, p_cai_mn, p_np, p_cohesion, p_enn, p_clumpy, p_contig, p_shape_mn, ncol = 2, nrow = 4, common.legend = TRUE, legend = "bottom", align = "hv") 
+# export at 2100 x 2800
+
+# combine landscape level plots
+ggarrange(p_contagion, p_shdi, p_shei, ncol = 2, nrow = 2, align = "hv")
+# export at 2100 x 1400
+```
 
 
 
