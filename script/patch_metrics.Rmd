@@ -19,6 +19,8 @@ library(sf)
 library(landscapemetrics)
 library(viridis)
 library(ggpubr)
+library(Kendall)
+library(padr)
 
 # note that landscapemetrics requires a lot of memory and may come up with an "rcpp" package error if the hardware is not sufficient. Try with a computer with more memory in that case! 
 
@@ -214,6 +216,27 @@ allpatchl.w <- allpatchl %>% dplyr::select(metric, value, dataset) %>% pivot_wid
 
 allpatch.w <- read.csv("export/csv/classmetrics.csv")
 allpatchl.w <- read.csv("export/csv/landmetrics.csv")
+
+# create a date column
+allpatch.w <- allpatch.w %>% mutate(date = case_when(
+         months == 0 ~ "2017/02/03",
+         months == 9 ~ "2017/10/19",
+         months == 21 ~ "2018/11/09",
+         months == 26 ~ "2019/04/30",
+         months == 34 ~ "2019/12/18",
+         months == 42 ~ "2020/08/13",
+         months == 46 ~ "2020/12/08")) 
+allpatch.w$date <- as.Date(allpatch.w$date)
+
+allpatchl.w <- allpatchl.w %>% mutate(date = case_when(
+         months == 0 ~ "2017/02/03",
+         months == 9 ~ "2017/10/19",
+         months == 21 ~ "2018/11/09",
+         months == 26 ~ "2019/04/30",
+         months == 34 ~ "2019/12/18",
+         months == 42 ~ "2020/08/13",
+         months == 46 ~ "2020/12/08")) 
+allpatchl.w$date <- as.Date(allpatchl.w$date)
 ```
 
 
@@ -231,31 +254,34 @@ allpatch.ws <- allpatch.w %>% filter(category %in% c("spor", "sarc", "sueda")) %
 patch_plot <- function(y_var, ylab){
   allpatch.ws %>% 
   ggplot() +
-    aes(x = months, y = y_var, color = category, linetype = category) +
+    aes(x = date, y = y_var, color = category, linetype = category) +
   geom_line(size = 3) +
     scale_color_manual(values = c("#1fbfad", "#f2c80c", "#5c0b1f"), labels = c("Sporobolus virginicus","Sarcocornia quinqueflora","Suaeda australis")) +
     scale_linetype_manual(values=c(2,3,4), labels = c("Sporobolus virginicus","Sarcocornia quinqueflora","Suaeda australis")) +
-    labs(x = "Months since restoration", y = ylab, color = "", linetype = "") +
+    labs(x = "Date", y = ylab, color = "", linetype = "") +
   theme_classic() +
   theme(text = element_text(size = 36),
         axis.text = element_text(size = 36),
         axis.title = element_text(size = 40),
         legend.text = element_text(size = 36, face = "italic"),
-        plot.margin = margin(20,10,10,10),
+        plot.margin = margin(20,20,10,10),
         legend.key.size = unit(6,"line"),
-        axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)))
+        axis.text.x = element_text(vjust = -1),
+        axis.title.x = element_text(vjust = -1))
 }
 
 land_plot <- function(y_var, ylab){
   allpatchl.w %>% 
   ggplot() +
-    aes(x = months, y = y_var) +
+    aes(x = date, y = y_var) +
   geom_line(size = 3) +
-    labs(x = "Months since restoration", y = ylab) +
+    labs(x = "Date", y = ylab) +
   theme_classic() +
   theme(axis.text = element_text(size = 40),
         axis.title = element_text(size = 48),
-        plot.margin = margin(20,10,10,10))
+        plot.margin = margin(20,20,20,10),
+        axis.text.x = element_text(vjust = -1),
+        axis.title.x = element_text(vjust = -1))
 }
 ```
 
@@ -367,9 +393,65 @@ ggarrange(p_contagion, p_shdi, p_shei, ncol = 2, nrow = 2, align = "hv")
 ```
 
 
+# Stats
+
+Trends - Kendall rank correlations
+
+Assumptions
+- continous data - yes
+- monotonic relationships - mostly, but when it's not, it's not going to be significant over time, so that's ok
+```{r Kendall rank correlations}
+allpatch.spor <- allpatch.ws %>% filter(category == "spor") %>% pad()
+allpatch.sarc <- allpatch.ws %>% filter(category == "sarc") %>% pad()
+allpatch.sueda <- allpatch.ws %>% filter(category == "sueda") %>% pad()
+allpatchl.w <- allpatchl.w %>% pad()
+
+# sporobolus
+MannKendall(ts(allpatch.spor$area_mn,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allpatch.spor$cai_mn,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allpatch.spor$np,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allpatch.spor$cohesion,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allpatch.spor$enn_mn,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allpatch.spor$clumpy,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allpatch.spor$contig_mn,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allpatch.spor$shape_mn,frequency = 365, start = c(2017,34)))
+# all non-significant
+
+# sarcorcornia
+MannKendall(ts(allpatch.sarc$area_mn,frequency = 365, start = c(2017,34))) # sig
+MannKendall(ts(allpatch.sarc$cai_mn,frequency = 365, start = c(2017,34))) # sig
+MannKendall(ts(allpatch.sarc$np,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allpatch.sarc$cohesion,frequency = 365, start = c(2017,34))) # sig
+MannKendall(ts(allpatch.sarc$enn_mn,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allpatch.sarc$clumpy,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allpatch.sarc$contig_mn,frequency = 365, start = c(2017,34))) # sig
+MannKendall(ts(allpatch.sarc$shape_mn,frequency = 365, start = c(2017,34)))
+
+# suaeda
+MannKendall(ts(allpatch.sueda$area_mn,frequency = 365, start = c(2018,313)))
+MannKendall(ts(allpatch.sueda$cai_mn,frequency = 365, start = c(2018,313)))
+MannKendall(ts(allpatch.sueda$np,frequency = 365, start = c(2018,313)))
+MannKendall(ts(allpatch.sueda$cohesion,frequency = 365, start = c(2018,313)))
+MannKendall(ts(allpatch.sueda$enn_mn,frequency = 365, start = c(2018,313)))
+MannKendall(ts(allpatch.sueda$clumpy,frequency = 365, start = c(2018,313)))
+MannKendall(ts(allpatch.sueda$contig_mn,frequency = 365, start = c(2018,313)))
+MannKendall(ts(allpatch.sueda$shape_mn,frequency = 365, start = c(2018,313)))
+
+# landscape
+MannKendall(ts(allpatchl.w$contag,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allpatchl.w$shdi,frequency = 365, start = c(2017,34))) # sig 
+MannKendall(ts(allpatchl.w$shei,frequency = 365, start = c(2017,34)))
+```
 
 
-could then try regressions etc 
+Differences between groups - Repeated measures ANOVAs
+
+Assumptions of repeated measures ANOVAs
+- independence- observations are independent (taken at diff times)
+- normality
+- sphericity
+
 ```{r}
+
 ```
 
