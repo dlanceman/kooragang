@@ -7,6 +7,8 @@ editor_options:
   chunk_output_type: console
 ---
 
+# Prepare data
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = 'C:/Users/danal/OneDrive - UNSW/Desktop/WRL/R')
@@ -16,11 +18,37 @@ knitr::opts_knit$set(root.dir = 'C:/Users/danal/OneDrive - UNSW/Desktop/WRL/R')
 library(tidyverse)
 library(raster)
 library(sf)
+library(padr)
+library(Kendall)
+library(lubridate)
 ```
 
-```{r get data}
+```{r get environmental data}
 dem <- raster("raw/20170213 kooragang island rgb_dsm.tif")
 
+rain <- read_csv("raw/climate/rainfall_061031.csv") %>% 
+  rename("rainfall" = "Rainfall amount (millimetres)") %>% 
+  filter(Quality == "Y", # only retain quality assured data
+         Year >= 2017) %>% 
+  mutate(date = make_date(Year, Month, Day)) %>% 
+  select("date", "rainfall")
+
+temp <- read_csv("raw/climate/temperature_061055.csv") %>% 
+  rename("temperature" = "Maximum temperature (Degree C)") %>% 
+  filter(Quality == "Y", # only retain quality assured data
+         Year >= 2017) %>% 
+  mutate(date = make_date(Year, Month, Day)) %>% 
+  select("date", "temperature")
+
+sea_lev <- read_csv("raw/climate/sealevel_newcastle_60310.csv") %>% 
+  filter(Gaps == 0,
+         Year >= 2017) %>% 
+  mutate(date = make_date(Year, Mth)) %>% 
+  select("date", "Minimum", "Maximum", "Mean", "St Devn")
+```
+
+
+```{r get maps}
 # cropped maps
 zero1 <- raster("raw/0mos_classified_0_1_all.tif")
 nine1 <- raster("raw/9mos_classified_01_all_new.tif")
@@ -104,6 +132,7 @@ plot(fortytwo_res)
 plot(fortysix_res)
 ```
 
+# Elevation - calculations / data manipulation
 
 ```{r calculate zonal stats}
 zonal_stats <- function(dataset, name){
@@ -133,7 +162,6 @@ zonal_mean <- function(dataset){
 means <- lapply(raster_names2,  zonal_mean) %>% bind_rows(.id = "id")
 ```
 
-# Zonal statistics
 
 count is irrelevant - remove
 
@@ -275,18 +303,30 @@ allzonal_wide <- allzonal %>% dplyr::select(mean, source, dataset, category) %>%
 allzonal_wide <- allzonal_wide %>% mutate(se = sd/sqrt(count))
 ```
 
+```{r add date column}
+allzonal_wide <- allzonal_wide %>% mutate(date = case_when(
+         dataset == 0 ~ "2017/02/03",
+         dataset == 9 ~ "2017/10/19",
+         dataset == 18 ~ "2018/11/09",
+         dataset == 26 ~ "2019/04/30",
+         dataset == 34 ~ "2019/12/18",
+         dataset == 42 ~ "2020/08/13",
+         dataset == 46 ~ "2020/12/08")) 
+allzonal_wide$date <- as.Date(allzonal_wide$date)
+```
 
-# plots
+
+# Elevation - plot
 
 does the elevation that different saltmarsh grows at differ between species and over time?
 
-```{r function}
+```{r plot function}
 plot_elev <- function(variable){
   ggplot(allzonal_wide) +
-  aes(x = dataset, y = variable, color = category, linetype = category) +
+  aes(x = date, y = variable, color = category, linetype = category) +
   geom_line(size = 3) +
-  scale_color_viridis(name = "Category", labels = c("Sarcocornia", "Sporobolus", "Suaeda"), discrete = TRUE, option = "turbo") +
-    scale_linetype_manual(name = "Category", labels = c("Sarcocornia", "Sporobolus", "Suaeda"), values=c(1,2,3,4)) +
+    scale_color_manual(values = c("#1fbfad", "#f2c80c", "#5c0b1f"), labels = c("Sarcocornia","Sporobolus","Suaeda")) +
+    scale_linetype_manual(values=c(2,3,4), labels = c("Sarcocornia","Sporobolus","Suaeda")) +
     labs(x = "Date", y = "Mean elevation (m)", color = "Category", linetype = "Category") +
   theme_classic() +
   guides(color = guide_legend(byrow = TRUE)) + # for legend spacing 
@@ -294,34 +334,174 @@ plot_elev <- function(variable){
         axis.title = element_text(size = 54),
         legend.text = element_text(size = 30),
         legend.title = element_text(size = 36),
-        plot.margin = margin(20,10,10,10),
+        plot.margin = margin(20,20,10,10),
         legend.spacing.y = unit(1, "cm"),
-        legend.key.size = unit(3,"line"))
+        legend.key.size = unit(3,"line"),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)))
 }
 ```
 
 
-```{r mean elevation}
-plot_elev(allzonal_wide$mean) +  
-  geom_ribbon(aes(ymin = mean - sd, ymax = mean + sd), alpha = 0.1) 
+```{r plot mean elevation}
+plot_elev(allzonal_wide$mean)
 ```
 
-```{r max}
-plot_elev(allzonal_wide$max) 
+max and min are unhelpful, show some extreme outliers that have incorrect DEM values (i.e. both negative values and values > 2 m are incorrect for this wetland)
+
+# Elevation Trend analysis 
+Did mean elevation change over time for each species?
+
+```{r pad time series}
+allzonal.spor <- allzonal_wide %>% filter(category == "spor") %>% pad()
+allzonal.sarc <- allzonal_wide %>% filter(category == "sarc") %>% pad() # sig
+allzonal.sueda <- allzonal_wide %>% filter(category == "sueda") %>% pad()
 ```
 
-```{r min}
-plot_elev(allzonal_wide$min) 
+```{r Kendall rank correlations}
+MannKendall(ts(allzonal.spor$mean,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allzonal.sarc$mean,frequency = 365, start = c(2017,34)))
+MannKendall(ts(allzonal.sueda$mean,frequency = 365, start = c(2018,313)))
+
 ```
-
-these are unhelpful, would like to figure out how to calculate confidence intervals, more relevant
-
-
-# stats?
-
 
 
 also consider clipping e.g. final image by each saltmarsh class, and then mapping frequency distribution at different elevations
+
+
+
+# Rainfall, temperature and sea level 
+
+```{r visualise trends in each variable over time}
+ggplot(sea_lev, aes(date, Mean)) + geom_line()
+ggplot(sea_lev, aes(date, Maximum)) + geom_line()
+ggplot(sea_lev, aes(date, Minimum)) + geom_line()
+
+ggplot(temp, aes(date, temperature)) + geom_line()
+
+ggplot(rain, aes(date, rainfall)) + geom_line()
+```
+
+```{r combine environmental variables into a single dataframe}
+env <- full_join(sea_lev, temp, by = "date")
+env <- full_join(env, rain, by = "date") %>% 
+  rename("min_sealev" = "Minimum",
+         "max_sealev" = "Maximum",
+         "mean_sealev" = "Mean",
+         "sd_sealev" = "St Devn")
+```
+
+
+```{r visualise relationships between variables}
+ggplot(env, aes(max_sealev, mean_sealev)) + geom_point()
+ggplot(env, aes(mean_sealev, min_sealev)) + geom_point()
+ggplot(env, aes(max_sealev, min_sealev)) + geom_point()
+# sea level variables are correlated, but not super strongly
+
+cor.test(env$max_sealev, env$mean_sealev) # cor = 0.4996957
+cor.test(env$min_sealev, env$mean_sealev) # cor = 0.7196871
+cor.test(env$min_sealev, env$max_sealev) # cor = 0.4312195
+
+# definitely can't use max and mean sea level together, not sure about others. max and min are likely more relevant than mean. not sure how relevant any are, given the artificial tidal inundation
+
+ggplot(env, aes(max_sealev, rainfall)) + geom_point() # certainly no correlation
+ggplot(env, aes(max_sealev, temperature)) + geom_point() # no correlation
+
+ggplot(env, aes(min_sealev, rainfall)) + geom_point() # certainly no correlation
+ggplot(env, aes(min_sealev, temperature)) + geom_point() # no correlation
+
+
+ggplot(env, aes(mean_sealev, rainfall)) + geom_point() # certainly no correlation
+ggplot(env, aes(mean_sealev, temperature)) + geom_point() # perhaps some correlation
+
+cor.test(env$temperature, env$mean_sealev) # cor = -0.17... all good
+
+ggplot(env, aes(temperature, rainfall))+ geom_point() # no correlation
+
+# therefore try a model with min sea level, max sea level, rainfall and temperature
+```
+
+for how long before the drone imagery was taken is each variable relevant?
+- entire period after previous drone image?
+- fixed period - how long?
+
+```{r summarise environmental variables between drone images}
+env <- env %>% 
+  mutate(fullperiod = case_when(
+  date >= "2017-02-03" & date < "2017-10-19" ~ "one",
+  date >= "2017-10-19" & date < "2018-11-09" ~ "two",
+  date >= "2018-11-09" & date < "2019-04-30" ~ "three",
+  date >= "2019-04-30" & date < "2019-12-18" ~ "four",
+  date >= "2019-12-18" & date < "2020-08-13" ~ "five",
+  date >= "2020-08-13" & date < "2020-12-08" ~ "six"
+),
+  prevmonth = case_when(
+  date >= "2017-09-19" & date < "2017-10-19" ~ "one",
+  date >= "2018-10-09" & date < "2018-11-09" ~ "two",
+  date >= "2019-03-30" & date < "2019-04-30" ~ "three",
+  date >= "2019-11-18" & date < "2019-12-18" ~ "four",
+  date >= "2020-07-13" & date < "2020-08-13" ~ "five",
+  date >= "2020-11-08" & date < "2020-12-08" ~ "six"
+),
+  threemonth = case_when(
+  date >= "2017-07-19" & date < "2017-10-19" ~ "one",
+  date >= "2018-08-09" & date < "2018-11-09" ~ "two",
+  date >= "2019-01-30" & date < "2019-04-30" ~ "three",
+  date >= "2019-09-18" & date < "2019-12-18" ~ "four",
+  date >= "2020-05-13" & date < "2020-08-13" ~ "five",
+  date >= "2020-09-08" & date < "2020-12-08" ~ "six"
+),
+ sixmonth = case_when(
+  date >= "2017-04-19" & date < "2017-10-19" ~ "one",
+  date >= "2018-05-09" & date < "2018-11-09" ~ "two",
+  date >= "2018-10-30" & date < "2019-04-30" ~ "three",
+  date >= "2019-06-18" & date < "2019-12-18" ~ "four",
+  date >= "2020-02-13" & date < "2020-08-13" ~ "five",
+  date >= "2020-06-08" & date < "2020-12-08" ~ "six")) %>% 
+  filter(!is.na(fullperiod))
+
+env_fullperiod <- env %>% 
+  group_by(fullperiod) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE)) %>% 
+  rename(dataset = fullperiod)
+
+env_prevmonth <- env %>% 
+  group_by(prevmonth) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE)) %>% 
+  filter(!is.na(prevmonth)) %>% 
+  rename(dataset = prevmonth) 
+
+env_threemonth <- env %>% 
+  group_by(threemonth) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE)) %>% 
+  filter(!is.na(threemonth)) %>% 
+  rename(dataset = threemonth)
+
+env_sixmonth <- env %>% 
+  group_by(sixmonth) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE)) %>% 
+  filter(!is.na(sixmonth)) %>% 
+  rename(dataset = sixmonth)
+```
 
 
 
@@ -329,7 +509,202 @@ regress growth against environmental conditions?
 
 use one_scale, variable made in "class_areas" script
 
-```{r}
-one_scale <- one_scale %>% mutate(growth = )
+```{r summarise growth between drone images}
+one_scale <- one_scale %>% mutate(dataset = case_when(
+  date == "2017-02-03" ~ 1,
+  date == "2017-10-19" ~ 2,
+  date == "2018-11-09" ~ 3,
+  date == "2019-04-30" ~ 4,
+  date == "2019-12-18" ~ 5,
+  date == "2020-08-13" ~ 6,
+  date == "2020-12-08" ~ 7
+))
+
+growth <- one_scale %>%
+  # first sort by category then by dataset
+  arrange(category, dataset) %>%
+  mutate(Diff_days = as.numeric(date) - lag(as.numeric(date)), # days between datasets
+         Diff_area = area - lag(area)) %>% # Difference in area between datasets 
+  filter(dataset != 1, # remove entries for first dataset, as these would have been calculated between categories, which is irrelevant
+         category %in% c("spor","sueda","sarc","saltmarsh")) %>% 
+  mutate(dataset = case_when(
+    dataset == 2 ~ "one",
+    dataset == 3 ~ "two",
+    dataset == 4 ~ "three",
+    dataset == 5 ~ "four",
+    dataset == 6 ~ "five",
+    dataset == 7 ~ "six"
+  )) %>% 
+  select(category, dataset, Diff_days, Diff_area)
+  
+growth$Diff_area[19] <- 0.416472 # assuming sueda started with an area of 0, initial growth equals the area of sueda the first time it was measured, i.e. 0.416472
+growth$Diff_days[19] <- 644 # number of days from first to third dataset
+
+growth <- growth %>% 
+  mutate(growthrate = Diff_area/Diff_days) %>% 
+  select(category, dataset, growthrate, Diff_days)
+
+```
+
+
+```{r combine env and growth datasets}
+env_fullperiod <- left_join(growth, env_fullperiod, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+env_prevmonth <- left_join(growth, env_prevmonth, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+env_threemonth <- left_join(growth, env_threemonth, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+env_sixmonth <- left_join(growth, env_sixmonth, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+```
+
+```{r explore relationships}
+# full period
+ggplot(env_fullperiod, aes(max_sl_mn, growthrate, color = category)) + 
+  geom_point() 
+ggplot(env_fullperiod, aes(min_sl_mn, growthrate, color = category)) + 
+  geom_point() # maybe a trend with spor
+ggplot(env_fullperiod, aes(mean_sl_mn, growthrate, color = category)) + 
+  geom_point() # maybe a trend with spor
+ggplot(env_fullperiod, aes(rainrate, growthrate, color = category)) + 
+  geom_point()
+ggplot(env_fullperiod, aes(temp_mn, growthrate, color = category)) + 
+  geom_point()
+
+# six months
+ggplot(env_sixmonth, aes(max_sl_mn, growthrate, color = category)) + 
+  geom_point() 
+ggplot(env_sixmonth, aes(min_sl_mn, growthrate, color = category)) + 
+  geom_point() # maybe a trend with spor
+ggplot(env_sixmonth, aes(mean_sl_mn, growthrate, color = category)) + 
+  geom_point() # maybe a trend with spor
+ggplot(env_sixmonth, aes(rainrate, growthrate, color = category)) + 
+  geom_point()
+ggplot(env_sixmonth, aes(temp_mn, growthrate, color = category)) + 
+  geom_point()
+
+# three months
+ggplot(env_threemonth, aes(max_sl_mn, growthrate, color = category)) + 
+  geom_point() 
+ggplot(env_threemonth, aes(min_sl_mn, growthrate, color = category)) + 
+  geom_point() # maybe a trend with spor
+ggplot(env_threemonth, aes(mean_sl_mn, growthrate, color = category)) + 
+  geom_point() # all have a rough trend
+ggplot(env_threemonth, aes(rainrate, growthrate, color = category)) + 
+  geom_point()
+ggplot(env_threemonth, aes(temp_mn, growthrate, color = category)) + 
+  geom_point()
+
+# one month
+ggplot(env_prevmonth, aes(max_sl_mn, growthrate, color = category)) + 
+  geom_point() 
+ggplot(env_prevmonth, aes(min_sl_mn, growthrate, color = category)) + 
+  geom_point() 
+ggplot(env_prevmonth, aes(mean_sl_mn, growthrate, color = category)) + 
+  geom_point() # sueda, sarc and overall saltmarsh have a bit of a trend (mostly sueda)
+ggplot(env_prevmonth, aes(rainrate, growthrate, color = category)) + 
+  geom_point() # somewhat of a negative trend for spor, sarc and overall saltmarsh
+ggplot(env_prevmonth, aes(temp_mn, growthrate, color = category)) + 
+  geom_point()
+```
+
+Run ANCOVAs - models with categorical (category) and quantitative (sea level, temp, rainfall) predictors
+
+Assumptions!
+1) Independence of data within and among samples
+2) Linear relationships among variables
+3) Normality of the residuals about the fitted lines for each group
+4) Homogeneity of variances for residuals about the fitted lines
+5) The variance of the residuals must be the same for each group
+6) For ANCOVA - PARALLEL SLOPES
+
+```{r data exploration - cleveland plots}
+cleveland_plot <- function(vector,axislab){
+  par(mfrow= c(1,2), mar = c(5,4,2,1)) # set some parameters for the plot
+  boxplot(vector,  ylab = axislab)
+  dotchart(vector, xlab = axislab,
+         ylab = "Order of the data") 
+}
+
+# full period
+cleveland_plot(env_fullperiod$max_sl_mn, "Mean maximum sea level (m)") # great
+cleveland_plot(env_fullperiod$min_sl_mn, "Mean minimum sea level (m)") # great
+cleveland_plot(env_fullperiod$temp_mn, "Mean temperature (deg C)") # right skewed, transformations don't really help. but no outliers
+cleveland_plot(env_fullperiod$rainrate, "Mean daily rainfall (mm)") # good
+cleveland_plot(env_fullperiod$growthrate, "Growth rate (area per day)") # right skewed
+cleveland_plot(log(env_fullperiod$growthrate + 0.01), "log Growth rate (area per day)") # log transformed is better
+
+# transform growth rate
+env_fullperiod <- env_fullperiod %>% mutate(log_growthrate = log(growthrate + 0.01))
+
+
+# six months
+cleveland_plot(env_sixmonth$max_sl_mn, "Mean maximum sea level (m)") # great
+cleveland_plot(env_sixmonth$min_sl_mn, "Mean minimum sea level (m)") # weird gap in middle but fine
+cleveland_plot(env_sixmonth$temp_mn, "Mean temperature (deg C)") # right skewed, transformations don't really help. it is an outlier but realistic
+cleveland_plot(env_sixmonth$rainrate, "Mean daily rainfall (mm)") # fine
+cleveland_plot(env_sixmonth$growthrate, "Growth rate (area per day)") # slightly right skewed
+cleveland_plot(log(env_sixmonth$growthrate + 0.01), "log Growth rate (area per day)") # log transformed is better
+
+# transform growth rate
+env_sixmonth <- env_sixmonth %>% mutate(log_growthrate = log(growthrate + 0.01))
+
+
+# three months
+cleveland_plot(env_threemonth$max_sl_mn, "Mean maximum sea level (m)") # slight outlier but ok
+cleveland_plot(env_threemonth$min_sl_mn, "Mean minimum sea level (m)") # slight outlier but ok
+cleveland_plot(env_threemonth$temp_mn, "Mean temperature (deg C)") # left skewed, transformations don't help. somewhat of an outlier but ok
+cleveland_plot(env_threemonth$rainrate, "Mean daily rainfall (mm)") # outlier
+cleveland_plot(log(env_threemonth$rainrate), "Mean daily rainfall (mm)") # log transform helps
+cleveland_plot(env_threemonth$growthrate, "Growth rate (area per day)") # slightly right skewed
+cleveland_plot(log(env_threemonth$growthrate + 0.01), "log Growth rate (area per day)") # log transformed is better
+
+# transform growth rate and rainfall
+env_threemonth <- env_threemonth %>% mutate(log_growthrate = log(growthrate + 0.01),
+                                            log_rainrate = log(rainrate))
+
+
+# one month
+cleveland_plot(env_prevmonth$max_sl_mn, "Mean maximum sea level (m)") # great
+cleveland_plot(env_prevmonth$min_sl_mn, "Mean minimum sea level (m)") # weird distribution, because there are only few values that mean min sea level takes and there is a massive gap between. transformations don't help. not considered an outlier though
+cleveland_plot(sqrt(env_prevmonth$temp_mn), "Mean temperature (deg C)") # left skewed, transformations don't help. bit of an outlier but ok
+cleveland_plot(env_prevmonth$rainrate, "Mean daily rainfall (mm)") # fine
+cleveland_plot(env_prevmonth$growthrate, "Growth rate (area per day)") # slightly right skewed
+cleveland_plot(log(env_prevmonth$growthrate + 0.01), "log Growth rate (area per day)") # log transformed is better
+
+# transform growth rate
+env_prevmonth <- env_prevmonth %>% mutate(log_growthrate = log(growthrate + 0.01))
+```
+
+
+
+
+```{r ANCOVA models - include category as a predictor}
+full_model <- lm(growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_fullperiod %>% filter(category != "saltmarsh")) 
+summary(full_model)
+
+month_model <- lm(growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_prevmonth %>% filter(category != "saltmarsh"))
+summary(month_model)
+
+threemonth_model <- lm(growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_threemonth %>% filter(category != "saltmarsh"))
+summary(threemonth_model)
+
+sixmonth_model <- lm(growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_sixmonth %>% filter(category != "saltmarsh"))
+summary(sixmonth_model)
+```
+
+
+```{r diagnostic plots}
+
+```
+
+```{r assumption 5 - equal variance around fitted lines}
+lm.a <- lm(growthrate ~ max_sl_mn + min_sl_mn + temp_mn + rainrate, env_fullperiod[env_fullperiod$category=='spor',])
+lm.b <- lm(growthrate ~ max_sl_mn + min_sl_mn + temp_mn + rainrate, env_fullperiod[env_fullperiod$category=='sarc',])
+lm.c <- lm(growthrate ~ max_sl_mn + min_sl_mn + temp_mn + rainrate, env_fullperiod[env_fullperiod$category=='sueda',])
+
+var.test(lm.a,lm.b)
+var.test(lm.b,lm.c)
+
 ```
 
