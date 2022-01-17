@@ -19,6 +19,8 @@ library(sf)
 library(gdata)
 library(ggpubr)
 library(viridis)
+library(padr)
+library(Kendall)
 
 # note that both tidyverse and raster have functions "select" and "extract"
 ```
@@ -348,6 +350,22 @@ saltmarsh[7,]$area - saltmarsh[1,]$area # net area change
 (saltmarsh[7,]$area - saltmarsh[1,]$area)/saltmarsh[1,]$area * 100
 ```
 
+
+```{r Test for significant trends - Kendall tests}
+spor_pad <- spor %>% pad()
+sarc_pad <- sarc %>% pad()
+sueda_pad <- sueda %>% pad()
+salt_pad <- saltmarsh %>% pad()
+
+MannKendall(ts(spor_pad$area,frequency = 365, start = c(2017,34)))
+MannKendall(ts(sarc_pad$area,frequency = 365, start = c(2017,34))) # sig
+MannKendall(ts(sueda_pad$area,frequency = 365, start = c(2018,313))) # near sig
+MannKendall(ts(salt_pad$area,frequency = 365, start = c(2017,34))) # sig
+
+
+
+
+```
 
 
 
