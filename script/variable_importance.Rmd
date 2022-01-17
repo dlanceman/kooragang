@@ -21,10 +21,59 @@ library(readxl)
 library(viridis)
 library(hrbrthemes)
 library(Hmisc)
+library(broom)
 ```
 
 ```{r get data}
-var_imp <- read_excel("raw/variable_importance.xlsx", sheet = "all")
+var_imp <- read_excel("raw/variable_importance_allvars.xlsx", sheet = "Sheet1")
+
+var_imp <- var_imp %>% 
+  group_by(Dataset) %>% 
+  mutate(rank = 57 - rank(Importance),
+         bandname = case_when(
+           Dataset %in% c(0,9,26,34) ~ case_when(
+             Band == 1 ~ "NDVI",
+             Band == 2 ~ "NIR",
+             Band == 3 ~ "DEM",
+             Band == 4 ~ "Green",
+             Band == 5 ~ "Red",
+             Band == 6 ~ "REG",
+             TRUE ~ "NA"),
+           Dataset == 21 ~ case_when(
+             Band == 1 ~ "DEM",
+             Band == 2 ~ "NDVI",
+             Band == 3 ~ "NIR",
+             Band == 4 ~ "REG",
+             Band == 5 ~ "Green",
+             Band == 6 ~ "Red",
+             TRUE ~ "NA"),
+           Dataset == 42 ~ case_when(
+             Band == 1 ~ "DEM",
+             Band == 2 ~ "NDVI",
+             Band == 3 ~ "NIR",
+             Band == 4 ~ "Green",
+             Band == 5 ~ "Red",
+             Band == 6 ~ "REG",
+             TRUE ~ "NA"),
+           Dataset == 46 ~ case_when(
+             Band == 1 ~ "DEM",
+             Band == 2 ~ "Green",
+             Band == 3 ~ "NDVI",
+             Band == 4 ~ "NIR",
+             Band == 5 ~ "REG",
+             Band == 6 ~ "Red",
+             TRUE ~ "NA")),
+         bandvar = case_when(Variable %in% c("Area", "Perimeter") ~ Variable,
+                             TRUE ~ paste(Variable, bandname, sep = "_")),
+         Variable = case_when(Variable == "Corr" ~ "Correlation",
+                              Variable == "Kurt" ~ "Kurtosis",
+                              Variable == "SD" ~ "Standard deviation",
+                              TRUE ~ Variable) %>% as.factor(),
+         Band = case_when(is.na(Band) ~ 0,
+                          TRUE ~ Band),
+         bandname = factor(bandname, levels = c("DEM", "NDVI", "Green", "Red", "NIR", "REG","NA")),
+         ln.imp = log(Importance)) %>% 
+  ungroup()
 ```
 
 ```{r violin plot}
@@ -44,30 +93,119 @@ violin <- function(dataset, x, y, filll){
       axis.text = element_text(size = 36),
       axis.title = element_text(size = 54),
        plot.margin = margin(20,10,10,10)) +
-    labs(x = "", y = "Proportional importance")}
+    labs(x = "", y = "Rank")}
 # need to increase axis text size
+# increase spacing between violins
 
 
 # Plot bands
-sample_size = var_imp %>% group_by(Band) %>% summarise(num=n())
+var_imp %>% filter(!is.na(bandname)) %>%  violin(.$bandname, .$rank, .$bandname)
 
-var_imp %>%
-  left_join(sample_size) %>%
-  mutate(myaxis = paste0(Band, "\n", "n=", num)) %>%
-  violin(.$myaxis, .$Proportion, .$Band)
-# increase spacing between violins (red/REG overlap)
+ggplot(var_imp %>% filter(!is.na(bandname)), aes(bandname, rank)) +
+  geom_boxplot()
 
 
 # plot variables
-var_samplesize = var_imp %>% group_by(Variable) %>% summarise(num=n())
+var_imp %>% violin(.$Variable, .$rank, .$Variable)
 
-var_imp %>%
-  left_join(var_samplesize) %>%
-  mutate(myaxis = paste0(Variable, "\n", "n=", num)) %>%
-  violin(.$myaxis, .$Proportion, .$Variable)
-# increase spacing between violins (red/REG overlap)
+ggplot(var_imp %>% filter(!is.na(Variable)), aes(Variable, rank)) +
+  geom_boxplot()
+
+# plot band/var combo
+# this one you can see area and perimeter
+ggplot(var_imp, aes(bandvar, rank)) +
+  geom_boxplot() 
+
+# can't see area and perimeter
+ggplot(var_imp %>% filter(!is.na(Band)), aes(bandname, rank)) +
+  geom_boxplot()  +
+  facet_wrap(~Variable)
 
 # export at 2100 x 1200
+
+# plot importance rather than rank - use this plot
+ggplot(var_imp %>% filter(Band != 0), aes(bandname, Importance)) +
+  geom_boxplot(lwd = 1, fatten = 1, outlier.size=2, color ="black")  +
+  facet_wrap(~Variable) + 
+  theme_bw() +
+  labs(x = "Band") +
+  theme(text = element_text(size = 48), # change font size
+        axis.text = element_text(size = 30),
+        panel.grid.major = element_blank(), # remove grid lines
+        panel.grid.minor = element_blank())
+
+ggplot(var_imp %>% filter(!is.na(Band)), aes(bandname, Importance)) +
+  geom_boxplot()  +
+  facet_wrap(~Variable) + 
+  labs(x = "Band") +
+  scale_y_log10() # plot y axis on log scale 
+
+ggplot(var_imp, aes(bandname, Importance, group = Dataset)) +
+  geom_boxplot() 
   
+```
+
+
+```{r mean importance of each variable}
+mean_imp <- var_imp %>% group_by(bandvar) %>% summarise(mean(Importance))
+median_imp <- var_imp %>% group_by(bandvar) %>% summarise(median(Importance))
+```
+
+
+
+# Test for differences in band/variable importance
+
+Factorial ANOVA 
+
+Assumptions
+- independence - yes, separate models based on different datasets
+- equal variances
+- normality
+
+```{r cleveland plot}
+cleveland_plot <- function(vector,axislab){
+  par(mfrow= c(1,2), mar = c(5,4,2,1)) # set some parameters for the plot
+  boxplot(vector,  ylab = axislab)
+  dotchart(vector, xlab = axislab,
+         ylab = "Order of the data") 
+}
+
+cleveland_plot(var_imp$rank, "Rank") # perfect
+```
+
+```{r diagnostic plots}
+par(mfrow = c(2, 2))
+plot(aov(Importance~Variable*bandname,var_imp)) # top left equal variances, top right normality 
+par(mfrow = c(1, 1))
+# equal variance and normality are acceptable 
+```
+
+
+
+```{r test}
+anova(aov(Importance~Variable*bandname,var_imp))
+# there is a significant interaction, therefore look into interactions
+
+# create an interaction term
+var_imp$Var_band_int <- interaction(var_imp$Variable,var_imp$bandname)
+
+TukeyHSD(aov(Importance~Var_band_int,var_imp))
+
+fm1 <- aov(Importance ~ Var_band_int, data = var_imp)
+res <- TukeyHSD(fm1, "Var_band_int", ordered = TRUE)
+tukey_df <- as.data.frame(res$Var_band_int) %>% filter(`p adj` < 0.05)
+tukey_df <- cbind(rownames(tukey_df), data.frame(tukey_df, row.names=NULL)) %>% 
+  rename("contrast" = "rownames(tukey_df)") %>% 
+  mutate(firstvar = sub("-.*", "", contrast),
+         secondvar = sub(".*-", "", contrast))
+```
+
+```{r important variables}
+tukey_df %>% filter(firstvar == "Mean.DEM") # greater than 55 vars
+tukey_df %>% filter(firstvar == "Mean.NDVI") # greater than 52 vars
+tukey_df %>% filter(firstvar == "Mean.Green") # greater than 53 vars
+tukey_df %>% filter(firstvar == "Mean.NIR") # greater than 50 vars
+tukey_df %>% filter(firstvar == "Mean.REG") # greater than 50 vars
+tukey_df %>% filter(firstvar == "Mean.Red") # greater than 50 vars
 ```
 
