@@ -21,6 +21,8 @@ library(sf)
 library(padr)
 library(Kendall)
 library(lubridate)
+library(ggpubr)
+library(rstatix)
 ```
 
 ```{r get environmental data}
@@ -401,7 +403,7 @@ cor.test(env$max_sealev, env$mean_sealev) # cor = 0.4996957
 cor.test(env$min_sealev, env$mean_sealev) # cor = 0.7196871
 cor.test(env$min_sealev, env$max_sealev) # cor = 0.4312195
 
-# definitely can't use max and mean sea level together, not sure about others. max and min are likely more relevant than mean. not sure how relevant any are, given the artificial tidal inundation
+# definitely can't use max and mean sea level together, not sure about others. not sure how relevant any sea level variables are, given the artificial tidal inundation
 
 ggplot(env, aes(max_sealev, rainfall)) + geom_point() # certainly no correlation
 ggplot(env, aes(max_sealev, temperature)) + geom_point() # no correlation
@@ -608,15 +610,16 @@ ggplot(env_prevmonth, aes(temp_mn, growthrate, color = category)) +
   geom_point()
 ```
 
-Run ANCOVAs - models with categorical (category) and quantitative (sea level, temp, rainfall) predictors
+Run Multiple regressions - models with multiple predictors - ok that one is categorical (category) and rest are quantitative (sea level, temp, rainfall). 
+- Basically equivalent to ANCOVA, but we don't need to emphasise the categorical variable, as in ANCOVA
 
 Assumptions!
-1) Independence of data within and among samples
-2) Linear relationships among variables
-3) Normality of the residuals about the fitted lines for each group
-4) Homogeneity of variances for residuals about the fitted lines
-5) The variance of the residuals must be the same for each group
-6) For ANCOVA - PARALLEL SLOPES
+1) Independence of data within and among samples - true, the amount saltmarsh has grown between each drone image is not directly related to previous growth periods
+2) Marginal relationship between response variable and each predictor is linear
+3) Normality of residuals 
+4) Homogeneity of variances of residuals
+5) No interactions among predictor variables, if you want to interpret main effects
+
 
 ```{r data exploration - cleveland plots}
 cleveland_plot <- function(vector,axislab){
@@ -631,11 +634,14 @@ cleveland_plot(env_fullperiod$max_sl_mn, "Mean maximum sea level (m)") # great
 cleveland_plot(env_fullperiod$min_sl_mn, "Mean minimum sea level (m)") # great
 cleveland_plot(env_fullperiod$temp_mn, "Mean temperature (deg C)") # right skewed, transformations don't really help. but no outliers
 cleveland_plot(env_fullperiod$rainrate, "Mean daily rainfall (mm)") # good
+# however log transforming rainfall improves the diagnostic plots below. Makes the distribution more skewed but ok.
+cleveland_plot(log(env_fullperiod$rainrate), "log mean daily rainfall (mm)")
 cleveland_plot(env_fullperiod$growthrate, "Growth rate (area per day)") # right skewed
 cleveland_plot(log(env_fullperiod$growthrate + 0.01), "log Growth rate (area per day)") # log transformed is better
 
-# transform growth rate
-env_fullperiod <- env_fullperiod %>% mutate(log_growthrate = log(growthrate + 0.01))
+# transform growth rate and rainfall (to improve diagnostic plots)
+env_fullperiod <- env_fullperiod %>% mutate(log_growthrate = log(growthrate + 0.05),
+                                            log_rainrate = log(rainrate))
 
 
 # six months
@@ -677,25 +683,94 @@ env_prevmonth <- env_prevmonth %>% mutate(log_growthrate = log(growthrate + 0.01
 ```
 
 
+```{r check linearity assumption}
+plot_linearity <- function(dataset, xvar){
+  ggscatter(
+  dataset %>% filter(category != "saltmarsh"), x = xvar, y = "log_growthrate",
+  color = "category", add = "reg.line"
+  )+
+  stat_regline_equation(
+    aes(label =  paste(..eq.label.., ..rr.label.., sep = "~~~~"), color = category)
+    )
+}
+
+plot_linearity(env_fullperiod, "max_sl_mn") # fine
+plot_linearity(env_fullperiod, "min_sl_mn") # fine
+plot_linearity(env_fullperiod, "temp_mn") # fine
+plot_linearity(env_fullperiod, "log_rainrate") # not great for sarc. looks parabolic, but this is driven by one point. 
+
+plot_linearity(env_prevmonth, "max_sl_mn") # fine
+plot_linearity(env_prevmonth, "min_sl_mn") # not really any relationship. fine
+plot_linearity(env_prevmonth, "temp_mn") # not great, driven by outliers
+plot_linearity(env_prevmonth, "rainrate") # fine
+
+plot_linearity(env_threemonth, "max_sl_mn") # fine
+plot_linearity(env_threemonth, "min_sl_mn") # fine
+plot_linearity(env_threemonth, "temp_mn") # fine
+plot_linearity(env_threemonth, "log_rainrate") # fine
+
+plot_linearity(env_sixmonth, "max_sl_mn") # fine
+plot_linearity(env_sixmonth, "min_sl_mn") # fine
+plot_linearity(env_sixmonth, "temp_mn") # fine
+plot_linearity(env_sixmonth, "rainrate") # fine
 
 
-```{r ANCOVA models - include category as a predictor}
-full_model <- lm(growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_fullperiod %>% filter(category != "saltmarsh")) 
-summary(full_model)
-
-month_model <- lm(growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_prevmonth %>% filter(category != "saltmarsh"))
-summary(month_model)
-
-threemonth_model <- lm(growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_threemonth %>% filter(category != "saltmarsh"))
-summary(threemonth_model)
-
-sixmonth_model <- lm(growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_sixmonth %>% filter(category != "saltmarsh"))
-summary(sixmonth_model)
 ```
 
 
-```{r diagnostic plots}
 
+```{r multiple regression models - include category as a predictor}
+# we're interested in interactions between category and the continuous predictor variables.
+
+full_model <- lm(log_growthrate ~ (max_sl_mn +  min_sl_mn + temp_mn + log_rainrate) * category, data = env_fullperiod %>% filter(category != "saltmarsh")) 
+summary(full_model)
+
+
+month_model <- lm(log_growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_prevmonth %>% filter(category != "saltmarsh"))
+summary(month_model)
+
+
+threemonth_model <- lm(log_growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + log_rainrate) * category, data = env_threemonth %>% filter(category != "saltmarsh"))
+summary(threemonth_model)
+
+
+
+sixmonth_model <- lm(log_growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_sixmonth %>% filter(category != "saltmarsh"))
+summary(sixmonth_model)
+```
+
+Diagnostic plots
+- residuals vs fitted - linearity
+- normal QQ - normality
+- scale-location - equal variances
+
+
+```{r diagnostic plots}
+par(mfrow = c(2, 2))
+plot(full_model) # top left equal variances, top right normality 
+
+plot(month_model) # top left equal variances, top right normality 
+
+plot(threemonth_model) # top left equal variances, top right normality 
+
+plot(sixmonth_model) # top left equal variances, top right normality 
+
+par(mfrow = c(1, 1))
+
+# assumptions are acceptable across all plots
+
+# all plots come up with warning messages:
+# 1: not plotting observations with leverage one:
+ # 13, 14, 15, 16, 17 
+# 2: In sqrt(crit * p * (1 - hh)/hh) : NaNs produced
+# 3: In sqrt(crit * p * (1 - hh)/hh) : NaNs produced
+# if temp is removed, all messages disappear
+# if any other continuous predictor is removed, the first error message disappears but the others stay
+# if category is removed, all error messages disappear
+
+# i think this is related to the dummy coding of "category" - some values will be assigned as 0 and this might confuse things
+
+# it should be ok to go ahead with these warning messages
 ```
 
 ```{r assumption 5 - equal variance around fitted lines}
