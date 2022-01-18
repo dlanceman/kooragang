@@ -684,24 +684,18 @@ env_prevmonth <- env_prevmonth %>% mutate(log_growthrate = log(growthrate + 0.01
 
 
 
-```{r multiple regression models - include category as a predictor}
+```{r built multiple regression models - include category as a predictor}
 # we're interested in interactions between category and the continuous predictor variables.
 
 full_model <- lm(log_growthrate ~ (max_sl_mn +  min_sl_mn + temp_mn + log_rainrate) * category, data = env_fullperiod %>% filter(category != "saltmarsh")) 
-summary(full_model)
-
 
 month_model <- lm(log_growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_prevmonth %>% filter(category != "saltmarsh"))
-summary(month_model)
-
 
 threemonth_model <- lm(log_growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + log_rainrate) * category, data = env_threemonth %>% filter(category != "saltmarsh"))
-summary(threemonth_model)
-
 
 
 sixmonth_model <- lm(log_growthrate ~ (max_sl_mn + min_sl_mn + temp_mn + rainrate) * category, data = env_sixmonth %>% filter(category != "saltmarsh"))
-summary(sixmonth_model)
+
 ```
 
 Diagnostic plots
@@ -736,5 +730,19 @@ par(mfrow = c(1, 1))
 # i think this is related to the dummy coding of "category" - some values will be assigned as 0 and this might confuse things
 
 # it should be ok to go ahead with these warning messages
+```
+
+```{r test models}
+summary(full_model) # no significance, low R2 adj
+summary(month_model) # no significance, low R2 adj
+summary(threemonth_model) # significant interaction between max sea level and category:spor (assume this means spor vs sarc), high R2 adj (0.8852)
+summary(sixmonth_model) # no significance, low R2 adj
+```
+
+```{r explore significant interaction}
+ggplot(env_threemonth %>% filter(category != "saltmarsh"), aes(max_sl_mn, growthrate, color = category)) + 
+  geom_point() 
+# spor is stable to decreasing with increasing max sea level, whereas the sarc increases with increasing max sea level
+
 ```
 
