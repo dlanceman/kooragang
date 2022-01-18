@@ -683,41 +683,6 @@ env_prevmonth <- env_prevmonth %>% mutate(log_growthrate = log(growthrate + 0.01
 ```
 
 
-```{r check linearity assumption}
-plot_linearity <- function(dataset, xvar){
-  ggscatter(
-  dataset %>% filter(category != "saltmarsh"), x = xvar, y = "log_growthrate",
-  color = "category", add = "reg.line"
-  )+
-  stat_regline_equation(
-    aes(label =  paste(..eq.label.., ..rr.label.., sep = "~~~~"), color = category)
-    )
-}
-
-plot_linearity(env_fullperiod, "max_sl_mn") # fine
-plot_linearity(env_fullperiod, "min_sl_mn") # fine
-plot_linearity(env_fullperiod, "temp_mn") # fine
-plot_linearity(env_fullperiod, "log_rainrate") # not great for sarc. looks parabolic, but this is driven by one point. 
-
-plot_linearity(env_prevmonth, "max_sl_mn") # fine
-plot_linearity(env_prevmonth, "min_sl_mn") # not really any relationship. fine
-plot_linearity(env_prevmonth, "temp_mn") # not great, driven by outliers
-plot_linearity(env_prevmonth, "rainrate") # fine
-
-plot_linearity(env_threemonth, "max_sl_mn") # fine
-plot_linearity(env_threemonth, "min_sl_mn") # fine
-plot_linearity(env_threemonth, "temp_mn") # fine
-plot_linearity(env_threemonth, "log_rainrate") # fine
-
-plot_linearity(env_sixmonth, "max_sl_mn") # fine
-plot_linearity(env_sixmonth, "min_sl_mn") # fine
-plot_linearity(env_sixmonth, "temp_mn") # fine
-plot_linearity(env_sixmonth, "rainrate") # fine
-
-
-```
-
-
 
 ```{r multiple regression models - include category as a predictor}
 # we're interested in interactions between category and the continuous predictor variables.
@@ -771,15 +736,5 @@ par(mfrow = c(1, 1))
 # i think this is related to the dummy coding of "category" - some values will be assigned as 0 and this might confuse things
 
 # it should be ok to go ahead with these warning messages
-```
-
-```{r assumption 5 - equal variance around fitted lines}
-lm.a <- lm(growthrate ~ max_sl_mn + min_sl_mn + temp_mn + rainrate, env_fullperiod[env_fullperiod$category=='spor',])
-lm.b <- lm(growthrate ~ max_sl_mn + min_sl_mn + temp_mn + rainrate, env_fullperiod[env_fullperiod$category=='sarc',])
-lm.c <- lm(growthrate ~ max_sl_mn + min_sl_mn + temp_mn + rainrate, env_fullperiod[env_fullperiod$category=='sueda',])
-
-var.test(lm.a,lm.b)
-var.test(lm.b,lm.c)
-
 ```
 
