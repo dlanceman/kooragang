@@ -34,13 +34,13 @@ var_imp <- var_imp %>%
            Dataset %in% c(0,9,26,34) ~ case_when(
              Band == 1 ~ "NDVI",
              Band == 2 ~ "NIR",
-             Band == 3 ~ "DEM",
+             Band == 3 ~ "Elev",
              Band == 4 ~ "Green",
              Band == 5 ~ "Red",
              Band == 6 ~ "REG",
              TRUE ~ "NA"),
            Dataset == 21 ~ case_when(
-             Band == 1 ~ "DEM",
+             Band == 1 ~ "Elev",
              Band == 2 ~ "NDVI",
              Band == 3 ~ "NIR",
              Band == 4 ~ "REG",
@@ -48,7 +48,7 @@ var_imp <- var_imp %>%
              Band == 6 ~ "Red",
              TRUE ~ "NA"),
            Dataset == 42 ~ case_when(
-             Band == 1 ~ "DEM",
+             Band == 1 ~ "Elev",
              Band == 2 ~ "NDVI",
              Band == 3 ~ "NIR",
              Band == 4 ~ "Green",
@@ -56,7 +56,7 @@ var_imp <- var_imp %>%
              Band == 6 ~ "REG",
              TRUE ~ "NA"),
            Dataset == 46 ~ case_when(
-             Band == 1 ~ "DEM",
+             Band == 1 ~ "Elev",
              Band == 2 ~ "Green",
              Band == 3 ~ "NDVI",
              Band == 4 ~ "NIR",
@@ -71,7 +71,7 @@ var_imp <- var_imp %>%
                               TRUE ~ Variable) %>% as.factor(),
          Band = case_when(is.na(Band) ~ 0,
                           TRUE ~ Band),
-         bandname = factor(bandname, levels = c("DEM", "NDVI", "Green", "Red", "NIR", "REG","NA")),
+         bandname = factor(bandname, levels = c("Elev", "NDVI", "Green", "Red", "NIR", "REG","NA")),
          ln.imp = log(Importance)) %>% 
   ungroup()
 ```
