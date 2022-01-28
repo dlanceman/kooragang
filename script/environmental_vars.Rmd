@@ -23,6 +23,7 @@ library(Kendall)
 library(lubridate)
 library(ggpubr)
 library(rstatix)
+library(gdata)
 ```
 
 ```{r get environmental data}
@@ -59,6 +60,16 @@ twentysix1 <- raster("raw/26mos_classified_01_all.tif")
 thirtyfour1 <- raster("raw/34mos_classified_01_all.tif")
 fortytwo1 <- raster("raw/42mos_classified_01_all.tif")
 fortysix1 <- raster("raw/46mos_classified_01_all.tif")
+
+# 46 minus 0 months - sarc/spor loss and growth map
+ch46minus0 <- raster("raw/change_tiffs/46mos_minus_0mos.tif")
+
+# other loss and growth tiffs
+ch46minus42t <- raster("raw/change_tiffs/46mos_minus_42mos.tif")
+ch42minus34t <- raster("raw/change_tiffs/42mos_minus_34mos.tif")
+ch34minus26t <- raster("raw/change_tiffs/34mos_minus_26mos.tif")
+ch26minus18t <- raster("raw/change_tiffs/26mos_minus_18mos.tif")
+ch18minus0t <- raster("raw/change_tiffs/18mos_minus_0mos.tif")
 
 # boundary for clipping 
 boundary <- st_read('raw/Clip_work.shp')
@@ -101,6 +112,30 @@ fortytwo1c <- mask(fortytwo1c, boundary)
 fortysix1c <- crop(fortysix1, extent(boundary)) 
 fortysix1c <- mask(fortysix1c, boundary)
 
+
+
+ch46minus0c <- crop(ch46minus0, extent(boundary)) 
+ch46minus0c <- mask(ch46minus0c, boundary)
+
+ch46minus42c <- crop(ch46minus42t, extent(boundary)) 
+ch46minus42c <- mask(ch46minus42c, boundary)
+
+ch42minus34c <- crop(ch42minus34t, extent(boundary)) 
+ch42minus34c <- mask(ch42minus34c, boundary)
+
+ch34minus26c <- crop(ch34minus26t, extent(boundary)) 
+ch34minus26c <- mask(ch34minus26c, boundary)
+
+ch26minus18c <- crop(ch26minus18t, extent(boundary)) 
+ch26minus18c <- mask(ch26minus18c, boundary)
+
+ch18minus0c <- crop(ch18minus0t, extent(boundary)) 
+ch18minus0c <- mask(ch18minus0c, boundary)
+
+
+
+
+
 demc <- crop(dem, extent(boundary)) 
 demc <- mask(demc, boundary)
 
@@ -116,9 +151,13 @@ thirtyfour_res <- raster::resample(thirtyfour1c, nine1c, method = "ngb")
 fortytwo_res <- raster::resample(fortytwo1c, nine1c, method = "ngb")
 fortysix_res <- raster::resample(fortysix1c, nine1c, method = "ngb")
 
+ch46minus0_res <- raster::resample(ch46minus0c, nine1c, method = "ngb")
+ch46minus42_res <- raster::resample(ch46minus42c, nine1c, method = "ngb")
+ch42minus34_res <- raster::resample(ch42minus34c, nine1c, method = "ngb")
+ch34minus26_res <- raster::resample(ch34minus26c, nine1c, method = "ngb")
+ch26minus18_res <- raster::resample(ch26minus18c, nine1c, method = "ngb")
+ch18minus0_res <- raster::resample(ch18minus0c, nine1c, method = "ngb")
 
-# create list of datasets
-raster_names2 <- list(zero_res, nine1c, eighteen_res, twentysix_res, thirtyfour_res, fortytwo_res, fortysix_res)
 ```
 
 
@@ -136,34 +175,7 @@ plot(fortysix_res)
 
 # Elevation - calculations / data manipulation
 
-```{r calculate zonal stats}
-zonal_stats <- function(dataset, name){
-  zmean <- zonal(dem_res, dataset, fun = "mean", digits = 2)
-  zsd <- zonal(dem_res, dataset, fun = "sd", digits = 2)
-  zmin <- zonal(dem_res, dataset, fun = "min", digits = 2)
-  zmax <- zonal(dem_res, dataset, fun = "max", digits = 2)
-  zcount <- zonal(dem_res, dataset, fun = "count", digits = 2, na.rm = TRUE)
-  name <- rbind(zmean, zsd, zmin, zmax)
-}
-
- zonal(dem_res, zero_res, fun = "mean", digits = 2)
- 
- zonal_stats(zero1c, zero_zonal)
-
-
- 
- 
- 
-
-zonal_mean <- function(dataset){
-  zonal(dem_res, dataset, fun = "mean", digits = 2)
-}
-
-
- 
-means <- lapply(raster_names2,  zonal_mean) %>% bind_rows(.id = "id")
-```
-
+Calculate zonal statistics 
 
 count is irrelevant - remove
 
@@ -369,6 +381,202 @@ MannKendall(ts(allzonal.sueda$mean,frequency = 365, start = c(2018,313)))
 
 also consider clipping e.g. final image by each saltmarsh class, and then mapping frequency distribution at different elevations
 
+# Elevation - compare elevation of areas of saltmarsh growth vs loss
+
+```{r 46 mos minus 0 mos}
+ch_mean <- zonal(dem_res, ch46minus0_res, fun = "mean", digits = 2)
+ch_sd <- zonal(dem_res, ch46minus0_res, fun = "sd", digits = 2)
+ch_min <- zonal(dem_res, ch46minus0_res, fun = "min", digits = 2)
+ch_max <- zonal(dem_res, ch46minus0_res, fun = "max", digits = 2)
+
+ch_demstats <- combine(ch_mean, ch_sd, ch_min, ch_max) 
+ch_demstats$source <-  recode(ch_demstats$source, 
+         "ch_mean" = "mean",
+         "ch_sd" = "sd",
+         "ch_min" = "min",
+         "ch_max" = "max") 
+ch_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+```
+
+```{r make into wide format}
+ch_demstats_wide <- ch_demstats %>% dplyr::select(mean, source, category) %>%
+  pivot_wider(names_from = source, values_from = mean) %>% 
+  filter(category != "No change")
+```
+
+
+```{r plot}
+# graph with SD range
+ggplot(ch_demstats_wide, aes(category, mean, ymin = mean-sd, ymax = mean+sd)) +
+  geom_point(size = 5) +
+  geom_errorbar(size = 2) +
+  labs(y = "Mean elevation", x = "") +
+  theme_bw() +
+  scale_x_discrete(labels= c("Sarc growth", "Sarc loss", "Sarc to Spor", "Spor growth", "Spor loss", "Spor to Sarc")) +
+  theme(axis.title = element_text(size = 48),
+        axis.text = element_text(size = 36),
+        panel.grid.major = element_blank(), # remove grid lines
+        panel.grid.minor = element_blank())
+```
+
+
+# Sarc and spor growth/loss over diff time periods vs elevation
+
+
+```{r 46 mos minus 42 mos}
+ch42_mean <- zonal(dem_res, ch46minus42_res, fun = "mean", digits = 2)
+ch42_sd <- zonal(dem_res, ch46minus42_res, fun = "sd", digits = 2)
+ch42_min <- zonal(dem_res, ch46minus42_res, fun = "min", digits = 2)
+ch42_max <- zonal(dem_res, ch46minus42_res, fun = "max", digits = 2)
+
+ch42_demstats <- combine(ch42_mean, ch42_sd, ch42_min, ch42_max) %>% 
+  mutate(dataset = 46) 
+ch42_demstats$source <-  recode(ch42_demstats$source, 
+         "ch42_mean" = "mean",
+         "ch42_sd" = "sd",
+         "ch42_min" = "min",
+         "ch42_max" = "max")  
+ch42_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+```
+
+
+```{r 42 mos minus 34 mos}
+ch34_mean <- zonal(dem_res, ch42minus34_res, fun = "mean", digits = 2)
+ch34_sd <- zonal(dem_res, ch42minus34_res, fun = "sd", digits = 2)
+ch34_min <- zonal(dem_res, ch42minus34_res, fun = "min", digits = 2)
+ch34_max <- zonal(dem_res, ch42minus34_res, fun = "max", digits = 2)
+
+ch34_demstats <- combine(ch34_mean, ch34_sd, ch34_min, ch34_max) %>% 
+  mutate(dataset = 42)
+ch34_demstats$source <-  recode(ch34_demstats$source, 
+         "ch34_mean" = "mean",
+         "ch34_sd" = "sd",
+         "ch34_min" = "min",
+         "ch34_max" = "max") 
+ch34_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+```
+
+
+
+```{r 34 mos minus 26 mos}
+ch26_mean <- zonal(dem_res, ch34minus26_res, fun = "mean", digits = 2)
+ch26_sd <- zonal(dem_res, ch34minus26_res, fun = "sd", digits = 2)
+ch26_min <- zonal(dem_res, ch34minus26_res, fun = "min", digits = 2)
+ch26_max <- zonal(dem_res, ch34minus26_res, fun = "max", digits = 2)
+
+ch26_demstats <- combine(ch26_mean, ch26_sd, ch26_min, ch26_max) %>% 
+  mutate(dataset = 34)
+ch26_demstats$source <-  recode(ch26_demstats$source, 
+         "ch26_mean" = "mean",
+         "ch26_sd" = "sd",
+         "ch26_min" = "min",
+         "ch26_max" = "max") 
+ch26_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+```
+
+
+
+```{r 26 mos minus 18 mos}
+ch18_mean <- zonal(dem_res, ch26minus18_res, fun = "mean", digits = 2)
+ch18_sd <- zonal(dem_res, ch26minus18_res, fun = "sd", digits = 2)
+ch18_min <- zonal(dem_res, ch26minus18_res, fun = "min", digits = 2)
+ch18_max <- zonal(dem_res, ch26minus18_res, fun = "max", digits = 2)
+
+ch18_demstats <- combine(ch18_mean, ch18_sd, ch18_min, ch18_max) %>% 
+  mutate(dataset = 26)
+ch18_demstats$source <-  recode(ch18_demstats$source, 
+         "ch18_mean" = "mean",
+         "ch18_sd" = "sd",
+         "ch18_min" = "min",
+         "ch18_max" = "max") 
+ch18_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+```
+
+
+
+```{r 18 mos minus 0 mos}
+ch0_mean <- zonal(dem_res, ch18minus0_res, fun = "mean", digits = 2)
+ch0_sd <- zonal(dem_res, ch18minus0_res, fun = "sd", digits = 2)
+ch0_min <- zonal(dem_res, ch18minus0_res, fun = "min", digits = 2)
+ch0_max <- zonal(dem_res, ch18minus0_res, fun = "max", digits = 2)
+
+ch0_demstats <- combine(ch0_mean, ch0_sd, ch0_min, ch0_max) %>% 
+  mutate(dataset = 18)
+ch0_demstats$source <-  recode(ch0_demstats$source, 
+         "ch0_mean" = "mean",
+         "ch0_sd" = "sd",
+         "ch0_min" = "min",
+         "ch0_max" = "max") 
+ch0_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+```
+
+
+
+```{r combine}
+growthzonal <- rbind(ch42_demstats, ch34_demstats, ch26_demstats, ch18_demstats, ch0_demstats) %>% 
+  filter(category != "No change")
+```
+
+```{r make into wide format}
+growthzonal_wide <- growthzonal %>% dplyr::select(mean, source, dataset, category) %>%
+  pivot_wider(names_from = source, values_from = mean)
+```
+
+```{r add date column}
+growthzonal_wide <- growthzonal_wide %>% mutate(date = case_when(
+         dataset == 18 ~ "2018/11/09",
+         dataset == 26 ~ "2019/04/30",
+         dataset == 34 ~ "2019/12/18",
+         dataset == 42 ~ "2020/08/13",
+         dataset == 46 ~ "2020/12/08")) 
+growthzonal_wide$date <- as.Date(growthzonal_wide$date)
+```
+
+
+```{r plot}
+ggplot(growthzonal_wide) +
+  aes(x = dataset, y = mean, color = category, linetype = category) +
+  geom_line(size = 3) +
+    labs(x = "Months since restoration", y = "Mean elevation (m)", color = "Category", linetype = "Category") +
+  #scale_x_date(date_breaks = "1 year", date_labels =  "%Y") +
+  theme_classic() +
+  guides(color = guide_legend(byrow = TRUE)) + # for legend spacing 
+  theme(axis.text = element_text(size = 40),
+        axis.title = element_text(size = 54),
+        legend.text = element_text(size = 30),
+        legend.title = element_text(size = 36),
+        plot.margin = margin(20,20,10,10),
+        legend.spacing.y = unit(1, "cm"),
+        legend.key.size = unit(3,"line"),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)))
+
+# export at 2100 x 1400
+```
+
+
+# Elevation Trends in growth/loss 
+Did mean elevation change over time for each species?
+
+```{r pad time series}
+growthzonal.spor.l <- growthzonal_wide %>% filter(category == "Sporobolus loss") %>% pad()
+growthzonal.sarc.l <- growthzonal_wide %>% filter(category == "Sarcocornia loss") %>% pad() 
+growthzonal.sportosarc <- growthzonal_wide %>% filter(category == "Sporobolus to Sarcocornia") %>% pad()
+growthzonal.spor.g <- growthzonal_wide %>% filter(category == "Sporobolus growth") %>% pad()
+growthzonal.sarc.g <- growthzonal_wide %>% filter(category == "Sarcocornia growth") %>% pad() 
+growthzonal.sarctospor <- growthzonal_wide %>% filter(category == "Sarcocornia to Sporobolus") %>% pad()
+```
+
+```{r Kendall rank correlations}
+MannKendall(ts(growthzonal.spor.l$mean,frequency = 365, start = c(2018,313)))
+MannKendall(ts(growthzonal.sarc.l$mean,frequency = 365, start = c(2018,313))) #near sig
+MannKendall(ts(growthzonal.sportosarc$mean,frequency = 365, start = c(2018,313))) #near sig
+MannKendall(ts(growthzonal.spor.g$mean,frequency = 365, start = c(2018,313)))
+MannKendall(ts(growthzonal.sarc.g$mean,frequency = 365, start = c(2018,313))) #near sig
+MannKendall(ts(growthzonal.sarctospor$mean,frequency = 365, start = c(2018,313))) #near sig
+
+# insufficient power with only 5 observations - near significant for 4 
+```
+
 
 
 # Rainfall, temperature and sea level 
@@ -390,6 +598,26 @@ env <- full_join(env, rain, by = "date") %>%
          "max_sealev" = "Maximum",
          "mean_sealev" = "Mean",
          "sd_sealev" = "St Devn")
+```
+
+```{r visualise trends over time}
+ggplot(env[!is.na(env$min_sealev),], aes(date, min_sealev)) +
+  geom_line() +
+  geom_point() 
+
+ggplot(env[!is.na(env$max_sealev),], aes(date, max_sealev)) +
+  geom_line() +
+  geom_point() 
+
+ggplot(env[!is.na(env$mean_sealev),], aes(date, mean_sealev)) +
+  geom_line() +
+  geom_point() 
+
+ggplot(env[!is.na(env$temperature),], aes(date, temperature)) +
+  geom_line() 
+
+ggplot(env[!is.na(env$rainfall),], aes(date, rainfall)) +
+  geom_line()  
 ```
 
 
@@ -468,7 +696,8 @@ env_fullperiod <- env %>%
             mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
             sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
             rain_tot = sum(rainfall, na.rm = TRUE),
-            temp_mn = mean(temperature, na.rm = TRUE)) %>% 
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
   rename(dataset = fullperiod)
 
 env_prevmonth <- env %>% 
@@ -478,7 +707,8 @@ env_prevmonth <- env %>%
             mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
             sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
             rain_tot = sum(rainfall, na.rm = TRUE),
-            temp_mn = mean(temperature, na.rm = TRUE)) %>% 
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
   filter(!is.na(prevmonth)) %>% 
   rename(dataset = prevmonth) 
 
@@ -489,7 +719,8 @@ env_threemonth <- env %>%
             mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
             sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
             rain_tot = sum(rainfall, na.rm = TRUE),
-            temp_mn = mean(temperature, na.rm = TRUE)) %>% 
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
   filter(!is.na(threemonth)) %>% 
   rename(dataset = threemonth)
 
@@ -500,11 +731,28 @@ env_sixmonth <- env %>%
             mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
             sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
             rain_tot = sum(rainfall, na.rm = TRUE),
-            temp_mn = mean(temperature, na.rm = TRUE)) %>% 
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
   filter(!is.na(sixmonth)) %>% 
   rename(dataset = sixmonth)
 ```
 
+```{r visualise trends in full month summary}
+ggplot(env_fullperiod, aes(date, max_sl_mn)) +
+  geom_line()
+
+ggplot(env_fullperiod, aes(date, min_sl_mn)) +
+  geom_line()
+
+ggplot(env_fullperiod, aes(date, mean_sl_mn)) +
+  geom_line()
+
+ggplot(env_fullperiod, aes(date, temp_mn)) +
+  geom_line()
+
+ggplot(env_fullperiod, aes(date, rain_tot)) +
+  geom_line()
+```
 
 
 regress growth against environmental conditions?
@@ -563,51 +811,51 @@ env_sixmonth <- left_join(growth, env_sixmonth, by = "dataset") %>%
 ```{r explore relationships}
 # full period
 ggplot(env_fullperiod, aes(max_sl_mn, growthrate, color = category)) + 
-  geom_point() 
+  geom_line() 
 ggplot(env_fullperiod, aes(min_sl_mn, growthrate, color = category)) + 
-  geom_point() # maybe a trend with spor
+  geom_line() # maybe a trend with spor
 ggplot(env_fullperiod, aes(mean_sl_mn, growthrate, color = category)) + 
-  geom_point() # maybe a trend with spor
+  geom_line() # maybe a trend with spor
 ggplot(env_fullperiod, aes(rainrate, growthrate, color = category)) + 
-  geom_point()
+  geom_line()
 ggplot(env_fullperiod, aes(temp_mn, growthrate, color = category)) + 
-  geom_point()
+  geom_line()
 
 # six months
 ggplot(env_sixmonth, aes(max_sl_mn, growthrate, color = category)) + 
-  geom_point() 
+  geom_line() 
 ggplot(env_sixmonth, aes(min_sl_mn, growthrate, color = category)) + 
-  geom_point() # maybe a trend with spor
+  geom_line() # maybe a trend with spor
 ggplot(env_sixmonth, aes(mean_sl_mn, growthrate, color = category)) + 
-  geom_point() # maybe a trend with spor
+  geom_line() # maybe a trend with spor
 ggplot(env_sixmonth, aes(rainrate, growthrate, color = category)) + 
-  geom_point()
+  geom_line()
 ggplot(env_sixmonth, aes(temp_mn, growthrate, color = category)) + 
-  geom_point()
+  geom_line()
 
 # three months
 ggplot(env_threemonth, aes(max_sl_mn, growthrate, color = category)) + 
-  geom_point() 
+  geom_line() 
 ggplot(env_threemonth, aes(min_sl_mn, growthrate, color = category)) + 
-  geom_point() # maybe a trend with spor
+  geom_line() # maybe a trend with spor
 ggplot(env_threemonth, aes(mean_sl_mn, growthrate, color = category)) + 
-  geom_point() # all have a rough trend
+  geom_line() # all have a rough trend
 ggplot(env_threemonth, aes(rainrate, growthrate, color = category)) + 
-  geom_point()
+  geom_line()
 ggplot(env_threemonth, aes(temp_mn, growthrate, color = category)) + 
-  geom_point()
+  geom_line()
 
 # one month
 ggplot(env_prevmonth, aes(max_sl_mn, growthrate, color = category)) + 
-  geom_point() 
+  geom_line() 
 ggplot(env_prevmonth, aes(min_sl_mn, growthrate, color = category)) + 
-  geom_point() 
+  geom_line() 
 ggplot(env_prevmonth, aes(mean_sl_mn, growthrate, color = category)) + 
-  geom_point() # sueda, sarc and overall saltmarsh have a bit of a trend (mostly sueda)
+  geom_line() # sueda, sarc and overall saltmarsh have a bit of a trend (mostly sueda)
 ggplot(env_prevmonth, aes(rainrate, growthrate, color = category)) + 
-  geom_point() # somewhat of a negative trend for spor, sarc and overall saltmarsh
+  geom_line() # somewhat of a negative trend for spor, sarc and overall saltmarsh
 ggplot(env_prevmonth, aes(temp_mn, growthrate, color = category)) + 
-  geom_point()
+  geom_line()
 ```
 
 Run Multiple regressions - models with multiple predictors - ok that one is categorical (category) and rest are quantitative (sea level, temp, rainfall). 
@@ -744,5 +992,12 @@ ggplot(env_threemonth %>% filter(category != "saltmarsh"), aes(max_sl_mn, growth
   geom_point() 
 # spor is stable to decreasing with increasing max sea level, whereas the sarc increases with increasing max sea level
 
+```
+
+
+# Memory issues?
+
+```{r garbage collection}
+gc() # garbage collection to help free up some memory
 ```
 
