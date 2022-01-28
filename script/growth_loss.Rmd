@@ -1,0 +1,280 @@
+---
+title: "Growth and loss"
+author: "Dana Lanceman"
+date: "1/27/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = 'C:/Users/danal/OneDrive - UNSW/Desktop/WRL/R')
+```
+
+```{r get packages}
+library(tidyverse)
+library(ggpubr)
+library(readxl)
+library(gdata)
+library(lubridate)
+```
+
+```{r get data}
+ch46minus42 <- read_excel("raw/growth_loss.xlsx", sheet = "46-42")
+ch42minus34 <- read_excel("raw/growth_loss.xlsx", sheet = "42-34")
+ch34minus26 <- read_excel("raw/growth_loss.xlsx", sheet = "34-26")
+ch26minus18 <- read_excel("raw/growth_loss.xlsx", sheet = "26-18")
+ch18minus0 <- read_excel("raw/growth_loss.xlsx", sheet = "18-0")
+
+ch18minus9 <- read_excel("raw/growth_loss.xlsx", sheet = "18-9")
+ch9minus0 <- read_excel("raw/growth_loss.xlsx", sheet = "9-0")
+```
+
+```{r prep data}
+change_prep <- function(dataset){
+  dataset %>% 
+  mutate(change = case_when(
+    value == -3 ~ "Sarcocornia loss",
+    value == -2 ~ "Sarcocornia to Sporobolus",
+    value == -1 ~ "Sporobolus loss",
+    value == 0 ~ "No change",
+    value == 1 ~ "Sporobolus growth",
+    value == 2 ~ "Sporobolus to Sarcocornia",
+    value == 3 ~ "Sarcocornia growth"
+  )) %>% 
+  select(change, Area_ha) %>% 
+    filter(change != "No change")
+}
+
+ch46minus42 <- change_prep(ch46minus42) 
+ch42minus34 <- change_prep(ch42minus34) 
+ch34minus26 <- change_prep(ch34minus26) 
+ch26minus18 <- change_prep(ch26minus18) 
+ch18minus0 <- change_prep(ch18minus0) 
+
+ch18minus9 <- change_prep(ch18minus9) 
+ch9minus0 <- change_prep(ch9minus0) 
+
+# make a zero month observation dataframe
+ch0 <- data.frame(change = c("Sarcocornia loss", "Sarcocornia to Sporobolus", "Sporobolus loss", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth"),Area_ha = c(0,0,0,0,0,0))
+```
+
+```{r merge datasets}
+allchange <- combine(ch46minus42, ch42minus34, ch34minus26, ch26minus18, ch18minus0, ch0) %>% 
+  mutate(source_num = case_when(
+    source == "ch46minus42" ~ 46,
+    source == "ch42minus34" ~ 42,
+    source == "ch34minus26" ~ 34,
+    source == "ch26minus18" ~ 26,
+    source == "ch18minus0" ~ 18,
+    source == "ch0" ~ 0
+  ))
+
+# add column about number of days & dataset (1-5)
+allchange <- allchange %>% mutate(Diff_days = case_when(
+    source == "ch46minus42" ~ 117,
+    source == "ch42minus34" ~ 239,
+    source == "ch34minus26" ~ 232,
+    source == "ch26minus18" ~ 172,
+    source == "ch18minus0" ~ 644,
+    source == "ch0" ~ 0
+),
+    dataset = case_when(
+    source == "ch46minus42" ~ "five",
+    source == "ch42minus34" ~ "four",
+    source == "ch34minus26" ~ "three",
+    source == "ch26minus18" ~ "two",
+    source == "ch18minus0" ~ "one",
+    source == "ch0" ~ "zero"
+    ),
+growthrate = Area_ha / Diff_days)
+
+allchange <- allchange[order(allchange$source_num),] %>% 
+  mutate(csum = ave(Area_ha, change, FUN=cumsum)) 
+
+
+```
+
+```{r plot}
+ggplot(allchange, aes(source_num, Area_ha, fill = change)) +
+  geom_bar(position="dodge", stat="identity")
+
+ggplot(allchange, aes(source_num, csum, color = change)) +
+  geom_line()
+# all occur at a relatively linear rate over time
+```
+
+
+# Correlate with environmental variables
+
+```{r get data}
+rain <- read_csv("raw/climate/rainfall_061031.csv") %>% 
+  rename("rainfall" = "Rainfall amount (millimetres)") %>% 
+  filter(Quality == "Y", # only retain quality assured data
+         Year >= 2017) %>% 
+  mutate(date = make_date(Year, Month, Day)) %>% 
+  select("date", "rainfall")
+
+temp <- read_csv("raw/climate/temperature_061055.csv") %>% 
+  rename("temperature" = "Maximum temperature (Degree C)") %>% 
+  filter(Quality == "Y", # only retain quality assured data
+         Year >= 2017) %>% 
+  mutate(date = make_date(Year, Month, Day)) %>% 
+  select("date", "temperature")
+
+sea_lev <- read_csv("raw/climate/sealevel_newcastle_60310.csv") %>% 
+  filter(Gaps == 0,
+         Year >= 2017) %>% 
+  mutate(date = make_date(Year, Mth)) %>% 
+  select("date", "Minimum", "Maximum", "Mean", "St Devn")
+```
+
+```{r prep env data}
+env2 <- full_join(sea_lev, temp, by = "date")
+env2 <- full_join(env2, rain, by = "date") %>% 
+  rename("min_sealev" = "Minimum",
+         "max_sealev" = "Maximum",
+         "mean_sealev" = "Mean",
+         "sd_sealev" = "St Devn")
+
+env2 <- env2 %>% 
+  mutate(fullperiod = case_when(
+  date >= "2017-02-03" & date < "2018-11-09" ~ "one",
+  date >= "2018-11-09" & date < "2019-04-30" ~ "two",
+  date >= "2019-04-30" & date < "2019-12-18" ~ "three",
+  date >= "2019-12-18" & date < "2020-08-13" ~ "four",
+  date >= "2020-08-13" & date < "2020-12-08" ~ "five"
+),
+  prevmonth = case_when(
+  date >= "2018-10-09" & date < "2018-11-09" ~ "one",
+  date >= "2019-03-30" & date < "2019-04-30" ~ "two",
+  date >= "2019-11-18" & date < "2019-12-18" ~ "three",
+  date >= "2020-07-13" & date < "2020-08-13" ~ "four",
+  date >= "2020-11-08" & date < "2020-12-08" ~ "five"
+),
+  threemonth = case_when(
+  date >= "2018-08-09" & date < "2018-11-09" ~ "one",
+  date >= "2019-01-30" & date < "2019-04-30" ~ "two",
+  date >= "2019-09-18" & date < "2019-12-18" ~ "three",
+  date >= "2020-05-13" & date < "2020-08-13" ~ "four",
+  date >= "2020-09-08" & date < "2020-12-08" ~ "five"
+),
+ sixmonth = case_when(
+  date >= "2018-05-09" & date < "2018-11-09" ~ "one",
+  date >= "2018-10-30" & date < "2019-04-30" ~ "two",
+  date >= "2019-06-18" & date < "2019-12-18" ~ "three",
+  date >= "2020-02-13" & date < "2020-08-13" ~ "four",
+  date >= "2020-06-08" & date < "2020-12-08" ~ "five")) %>% 
+  filter(!is.na(fullperiod))
+
+env2_fullperiod <- env2 %>% 
+  group_by(fullperiod) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
+  rename(dataset = fullperiod)
+
+env2_prevmonth <- env2 %>% 
+  group_by(prevmonth) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
+  filter(!is.na(prevmonth)) %>% 
+  rename(dataset = prevmonth) 
+
+env2_threemonth <- env2 %>% 
+  group_by(threemonth) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
+  filter(!is.na(threemonth)) %>% 
+  rename(dataset = threemonth)
+
+env2_sixmonth <- env2 %>% 
+  group_by(sixmonth) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
+  filter(!is.na(sixmonth)) %>% 
+  rename(dataset = sixmonth)
+```
+
+```{r combine env2 and change datasets}
+env2_fullperiod <- left_join(allchange %>% filter(dataset != "zero"), env2_fullperiod, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+env2_prevmonth <- left_join(allchange %>% filter(dataset != "zero"), env2_prevmonth, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+env2_threemonth <- left_join(allchange %>% filter(dataset != "zero"), env2_threemonth, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+env2_sixmonth <- left_join(allchange %>% filter(dataset != "zero"), env2_sixmonth, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+```
+
+
+
+```{r explore relationships}
+# full period
+ggplot(env2_fullperiod, aes(max_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env2_fullperiod, aes(min_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env2_fullperiod, aes(mean_sl_mn, growthrate, color = change)) + 
+  geom_line()
+ggplot(env2_fullperiod, aes(rainrate, growthrate, color = change)) + 
+  geom_line()
+ggplot(env2_fullperiod, aes(temp_mn, growthrate, color = change)) + 
+  geom_line()
+
+# six months
+ggplot(env2_sixmonth, aes(max_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env2_sixmonth, aes(min_sl_mn, growthrate, color = change)) + 
+  geom_line() # maybe a trend with spor
+ggplot(env2_sixmonth, aes(mean_sl_mn, growthrate, color = change)) + 
+  geom_line() # maybe a trend with spor
+ggplot(env2_sixmonth, aes(rainrate, growthrate, color = change)) + 
+  geom_line()
+ggplot(env2_sixmonth, aes(temp_mn, growthrate, color = change)) + 
+  geom_line()
+
+# three months
+ggplot(env2_threemonth, aes(max_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env2_threemonth, aes(min_sl_mn, growthrate, color = change)) + 
+  geom_line() # maybe a trend with spor
+ggplot(env2_threemonth, aes(mean_sl_mn, growthrate, color = change)) + 
+  geom_line() # all have a rough trend
+ggplot(env2_threemonth, aes(rainrate, growthrate, color = change)) + 
+  geom_line()
+ggplot(env2_threemonth, aes(temp_mn, growthrate, color = change)) + 
+  geom_line()
+
+# one month
+ggplot(env2_prevmonth, aes(max_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env2_prevmonth, aes(min_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env2_prevmonth, aes(mean_sl_mn, growthrate, color = change)) + 
+  geom_line() # sueda, sarc and overall saltmarsh have a bit of a trend (mostly sueda)
+ggplot(env2_prevmonth, aes(rainrate, growthrate, color = change)) + 
+  geom_line() # somewhat of a negative trend for spor, sarc and overall saltmarsh
+ggplot(env2_prevmonth, aes(temp_mn, growthrate, color = change)) + 
+  geom_line()
+```
