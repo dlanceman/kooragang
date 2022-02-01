@@ -76,38 +76,13 @@ var_imp <- var_imp %>%
   ungroup()
 ```
 
-```{r violin plot}
-# code modified from data_to_viz.com 
-# https://www.data-to-viz.com/caveat/boxplot.html
-
-violin <- function(dataset, x, y, filll){
-  ggplot(dataset, aes(x=x, y=y, fill=filll)) +
-    geom_violin(width=1.3) +
-    geom_boxplot(width=0.1, alpha=1, color="white") +
-    scale_fill_viridis(discrete = TRUE) +
-    theme_classic() +
-    theme(legend.position="none",
-      plot.title = element_text(size=11),
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank(),
-      axis.text = element_text(size = 36),
-      axis.title = element_text(size = 54),
-       plot.margin = margin(20,10,10,10)) +
-    labs(x = "", y = "Rank")}
-# need to increase axis text size
-# increase spacing between violins
-
-
+```{r plot band/variable importance}
 # Plot bands
-var_imp %>% filter(!is.na(bandname)) %>%  violin(.$bandname, .$rank, .$bandname)
-
 ggplot(var_imp %>% filter(!is.na(bandname)), aes(bandname, rank)) +
   geom_boxplot()
 
 
 # plot variables
-var_imp %>% violin(.$Variable, .$rank, .$Variable)
-
 ggplot(var_imp %>% filter(!is.na(Variable)), aes(Variable, rank)) +
   geom_boxplot()
 
