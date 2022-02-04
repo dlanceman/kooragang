@@ -194,7 +194,7 @@ allpatchl <- rbind(contags, shan.divs, shan.evens)
 allpatch.w <- allpatchc %>% dplyr::select(metric, value, dataset, category) %>% pivot_wider(names_from = metric, values_from = value) %>% 
   mutate(months = case_when(dataset == "zero" ~ 0,
                             dataset == "nine" ~ 9,
-                            dataset == "eighteen" ~ 21,
+                            dataset == "eighteen" ~ 18,
                             dataset == "twentysix" ~ 26,
                             dataset == "thirtyfour" ~ 34,
                             dataset == "fortytwo" ~ 42,
@@ -203,7 +203,7 @@ allpatch.w <- allpatchc %>% dplyr::select(metric, value, dataset, category) %>% 
 allpatchl.w <- allpatchl %>% dplyr::select(metric, value, dataset) %>% pivot_wider(names_from = metric, values_from = value) %>% 
   mutate(months = case_when(dataset == "zero" ~ 0,
                             dataset == "nine" ~ 9,
-                            dataset == "eighteen" ~ 21,
+                            dataset == "eighteen" ~ 18,
                             dataset == "twentysix" ~ 26,
                             dataset == "thirtyfour" ~ 34,
                             dataset == "fortytwo" ~ 42,
@@ -221,7 +221,7 @@ allpatchl.w <- read.csv("export/csv/landmetrics.csv")
 allpatch.w <- allpatch.w %>% mutate(date = case_when(
          months == 0 ~ "2017/02/03",
          months == 9 ~ "2017/10/19",
-         months == 21 ~ "2018/11/09",
+         months == 18 ~ "2018/08/22", 
          months == 26 ~ "2019/04/30",
          months == 34 ~ "2019/12/18",
          months == 42 ~ "2020/08/13",
@@ -231,7 +231,7 @@ allpatch.w$date <- as.Date(allpatch.w$date)
 allpatchl.w <- allpatchl.w %>% mutate(date = case_when(
          months == 0 ~ "2017/02/03",
          months == 9 ~ "2017/10/19",
-         months == 21 ~ "2018/11/09",
+         months == 18 ~ "2018/08/22",
          months == 26 ~ "2019/04/30",
          months == 34 ~ "2019/12/18",
          months == 42 ~ "2020/08/13",

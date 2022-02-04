@@ -176,11 +176,12 @@ tukey_df <- cbind(rownames(tukey_df), data.frame(tukey_df, row.names=NULL)) %>%
 ```
 
 ```{r important variables}
-tukey_df %>% filter(firstvar == "Mean.DEM") # greater than 55 vars
+tukey_df %>% filter(firstvar == "Mean.Elev") # greater than 55 vars
 tukey_df %>% filter(firstvar == "Mean.NDVI") # greater than 52 vars
 tukey_df %>% filter(firstvar == "Mean.Green") # greater than 53 vars
 tukey_df %>% filter(firstvar == "Mean.NIR") # greater than 50 vars
 tukey_df %>% filter(firstvar == "Mean.REG") # greater than 50 vars
 tukey_df %>% filter(firstvar == "Mean.Red") # greater than 50 vars
+tukey_df %>% filter(secondvar == "Perimeter.NA")
 ```
 

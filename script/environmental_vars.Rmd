@@ -321,7 +321,7 @@ allzonal_wide <- allzonal_wide %>% mutate(se = sd/sqrt(count))
 allzonal_wide <- allzonal_wide %>% mutate(date = case_when(
          dataset == 0 ~ "2017/02/03",
          dataset == 9 ~ "2017/10/19",
-         dataset == 18 ~ "2018/11/09",
+         dataset == 18 ~ "2018/08/22",
          dataset == 26 ~ "2019/04/30",
          dataset == 34 ~ "2019/12/18",
          dataset == 42 ~ "2020/08/13",
@@ -341,7 +341,7 @@ plot_elev <- function(variable){
   geom_line(size = 3) +
     scale_color_manual(values = c("#1fbfad", "#f2c80c", "#5c0b1f"), labels = c("Sarcocornia","Sporobolus","Suaeda")) +
     scale_linetype_manual(values=c(2,3,4), labels = c("Sarcocornia","Sporobolus","Suaeda")) +
-    labs(x = "Date", y = "Mean elevation (m)", color = "Category", linetype = "Category") +
+    labs(x = "Date", y = "Mean elevation (m)", color = "", linetype = "") +
   theme_classic() +
   guides(color = guide_legend(byrow = TRUE)) + # for legend spacing 
   theme(axis.text = element_text(size = 40),
@@ -524,7 +524,7 @@ growthzonal_wide <- growthzonal %>% dplyr::select(mean, source, dataset, categor
 
 ```{r add date column}
 growthzonal_wide <- growthzonal_wide %>% mutate(date = case_when(
-         dataset == 18 ~ "2018/11/09",
+         dataset == 18 ~ "2018/08/22",
          dataset == 26 ~ "2019/04/30",
          dataset == 34 ~ "2019/12/18",
          dataset == 42 ~ "2020/08/13",
@@ -537,7 +537,7 @@ growthzonal_wide$date <- as.Date(growthzonal_wide$date)
 ggplot(growthzonal_wide) +
   aes(x = dataset, y = mean, color = category, linetype = category) +
   geom_line(size = 3) +
-    labs(x = "Months since restoration", y = "Mean elevation (m)", color = "Category", linetype = "Category") +
+    labs(x = "Months since restoration", y = "Mean elevation (m)", color = "", linetype = "") +
   #scale_x_date(date_breaks = "1 year", date_labels =  "%Y") +
   theme_classic() +
   guides(color = guide_legend(byrow = TRUE)) + # for legend spacing 

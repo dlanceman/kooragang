@@ -241,7 +241,7 @@ one_scale <- combine(cells0DF1, cells9DF1, cells18DF1, cells26DF1, cells34DF1, c
 one_scale$source <- recode(one_scale$source,
          "cells0DF1" = "2017/02/03",
          "cells9DF1" = "2017/10/19",
-         "cells18DF1" = "2018/11/09",
+         "cells18DF1" = "2018/08/22",
          "cells26DF1" = "2019/04/30",
          "cells34DF1" = "2019/12/18",
          "cells42DF1" = "2020/08/13",
@@ -250,6 +250,15 @@ one_scale <- rename(one_scale, date = source) # rename source column to date
 one_scale <- one_scale %>% mutate(Scale = 0.1) # add column for scale
   
 one_scale
+
+# add 0,0 point for suaeda 
+
+zero_suaeda <- data.frame("na", 0, "sueda", 0, "2017-02-03", 0.1)
+names(zero_suaeda) <- names(one_scale)
+zero_suaeda$date <- as.Date(zero_suaeda$date)
+
+one_scale <- rbind(one_scale, zero_suaeda) 
+
 ```
 
 
@@ -299,8 +308,8 @@ combo_plot <- function(x){
   ggplot() +
     aes(x = date, y = area, color = category, linetype = category) +
   geom_line(size = 3) +
-  scale_color_viridis(name = "Category", labels = c("All saltmarsh", "Sarcocornia", "Sporobolus", "Suaeda"), discrete = TRUE, option = "turbo") +
-    scale_linetype_manual(name = "Category", labels = c("All saltmarsh", "Sarcocornia", "Sporobolus", "Suaeda"), values=c(1,2,3,4)) +
+  scale_color_viridis(name = "", labels = c("All saltmarsh", "Sarcocornia", "Sporobolus", "Suaeda"), discrete = TRUE, option = "turbo") +
+    scale_linetype_manual(name = "", labels = c("All saltmarsh", "Sarcocornia", "Sporobolus", "Suaeda"), values=c(1,2,3,4)) +
     labs(x = "Date", y = "Area (ha)", color = "Category", linetype = "Category") +
   theme_classic() +
   guides(color = guide_legend(byrow = TRUE)) + # for legend spacing 

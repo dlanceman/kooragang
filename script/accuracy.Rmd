@@ -73,6 +73,7 @@ spor
 sarc <- acc.time.line(producers, "sarc", "Sarcorcornia") +
   labs(title = "Sarcorcornia", x = "", y = "Accuracy (%)") 
 sarc
+# note that this is the main sarc class without the new clumps, accuracy is different for the sarc clump class (higher) but not included in this plot
 
 grass <- acc.time.line(producers, "grass", "Grass") +
   labs(title = "Grass", x = "", y = "")
