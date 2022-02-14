@@ -28,7 +28,7 @@ library(Kendall)
 ```{r load data}
 # full data
 zero1 <- raster("raw/0mos_classified_0_1_all.tif")
-nine1 <- raster("raw/9mos_classified_01_all_new.tif")
+nine1 <- raster("raw/9mos_classified_evenmoremud.tif")
 eighteen1 <- raster("raw/18mos_classified_01_all.tif")
 twentysix1 <- raster("raw/26mos_classified_01_all.tif")
 thirtyfour1 <- raster("raw/34mos_classified_01_all.tif")
@@ -64,10 +64,10 @@ plot(twsix1.crop)
 fosix1.crop <- crop(fortysix1, extent(boundary)) 
 fosix1.crop <- mask(fosix1.crop, boundary)
 plot(fosix1.crop)
-
 ```
 
 
+Merge both the sarcocornia classes in 9 months dataset
 ```{r reassign sarc_clumps as sarc in 9 mos}
 # reclassify class 8 as class 2
 
@@ -370,11 +370,5 @@ MannKendall(ts(spor_pad$area,frequency = 365, start = c(2017,34)))
 MannKendall(ts(sarc_pad$area,frequency = 365, start = c(2017,34))) # sig
 MannKendall(ts(sueda_pad$area,frequency = 365, start = c(2018,313))) # near sig
 MannKendall(ts(salt_pad$area,frequency = 365, start = c(2017,34))) # sig
-
-
-
-
 ```
-
-
 
