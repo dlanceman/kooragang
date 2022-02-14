@@ -60,7 +60,7 @@ ch9minus0 <- change_prep(ch9minus0)
 ch0 <- data.frame(change = c("Sarcocornia loss", "Sarcocornia to Sporobolus", "Sporobolus loss", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth"),Area_ha = c(0,0,0,0,0,0))
 ```
 
-```{r merge datasets}
+```{r merge datasets - without 9 mos}
 allchange <- combine(ch46minus42, ch42minus34, ch34minus26, ch26minus18, ch18minus0, ch0) %>% 
   mutate(source_num = case_when(
     source == "ch46minus42" ~ 46,
@@ -76,8 +76,8 @@ allchange <- allchange %>% mutate(Diff_days = case_when(
     source == "ch46minus42" ~ 117,
     source == "ch42minus34" ~ 239,
     source == "ch34minus26" ~ 232,
-    source == "ch26minus18" ~ 172,
-    source == "ch18minus0" ~ 644,
+    source == "ch26minus18" ~ 251,
+    source == "ch18minus0" ~ 565,
     source == "ch0" ~ 0
 ),
     dataset = case_when(
@@ -96,13 +96,43 @@ allchange <- allchange[order(allchange$source_num),] %>%
 
 ```
 
-```{r plot}
-ggplot(allchange, aes(source_num, Area_ha, fill = change)) +
-  geom_bar(position="dodge", stat="identity")
+```{r merge datasets - with 9 mos}
+allchange2 <- combine(ch46minus42, ch42minus34, ch34minus26, ch26minus18, ch18minus9, ch9minus0, ch0) %>% 
+  mutate(source_num = case_when(
+    source == "ch46minus42" ~ 46,
+    source == "ch42minus34" ~ 42,
+    source == "ch34minus26" ~ 34,
+    source == "ch26minus18" ~ 26,
+    source == "ch18minus9" ~ 18,
+    source == "ch9minus0" ~ 9,
+    source == "ch0" ~ 0
+  ))
 
-ggplot(allchange, aes(source_num, csum, color = change)) +
-  geom_line()
-# all occur at a relatively linear rate over time
+# add column about number of days & dataset (1-5)
+allchange2 <- allchange2 %>% mutate(Diff_days = case_when(
+    source == "ch46minus42" ~ 117,
+    source == "ch42minus34" ~ 239,
+    source == "ch34minus26" ~ 232,
+    source == "ch26minus18" ~ 251,
+    source == "ch18minus9" ~ 307,
+    source == "ch9minus0" ~ 258,
+    source == "ch0" ~ 0
+),
+    dataset = case_when(
+    source == "ch46minus42" ~ "six",
+    source == "ch42minus34" ~ "five",
+    source == "ch34minus26" ~ "four",
+    source == "ch26minus18" ~ "three",
+    source == "ch18minus9" ~ "two",
+    source == "ch9minus0" ~ "one",
+    source == "ch0" ~ "zero"
+    ),
+growthrate = Area_ha / Diff_days)
+
+allchange2 <- allchange2[order(allchange2$source_num),] %>% 
+  mutate(csum = ave(Area_ha, change, FUN=cumsum)) 
+
+
 ```
 
 
@@ -130,7 +160,7 @@ sea_lev <- read_csv("raw/climate/sealevel_newcastle_60310.csv") %>%
   select("date", "Minimum", "Maximum", "Mean", "St Devn")
 ```
 
-```{r prep env data}
+```{r prep env data - for without 9 mos}
 env2 <- full_join(sea_lev, temp, by = "date")
 env2 <- full_join(env2, rain, by = "date") %>% 
   rename("min_sealev" = "Minimum",
@@ -140,28 +170,28 @@ env2 <- full_join(env2, rain, by = "date") %>%
 
 env2 <- env2 %>% 
   mutate(fullperiod = case_when(
-  date >= "2017-02-03" & date < "2018-11-09" ~ "one",
-  date >= "2018-11-09" & date < "2019-04-30" ~ "two",
+  date >= "2017-02-03" & date < "2018-08-22" ~ "one",
+  date >= "2018-08-22" & date < "2019-04-30" ~ "two",
   date >= "2019-04-30" & date < "2019-12-18" ~ "three",
   date >= "2019-12-18" & date < "2020-08-13" ~ "four",
   date >= "2020-08-13" & date < "2020-12-08" ~ "five"
 ),
   prevmonth = case_when(
-  date >= "2018-10-09" & date < "2018-11-09" ~ "one",
+  date >= "2018-07-22" & date < "2018-08-22" ~ "one",
   date >= "2019-03-30" & date < "2019-04-30" ~ "two",
   date >= "2019-11-18" & date < "2019-12-18" ~ "three",
   date >= "2020-07-13" & date < "2020-08-13" ~ "four",
   date >= "2020-11-08" & date < "2020-12-08" ~ "five"
 ),
   threemonth = case_when(
-  date >= "2018-08-09" & date < "2018-11-09" ~ "one",
+  date >= "2018-05-22" & date < "2018-08-22" ~ "one",
   date >= "2019-01-30" & date < "2019-04-30" ~ "two",
   date >= "2019-09-18" & date < "2019-12-18" ~ "three",
   date >= "2020-05-13" & date < "2020-08-13" ~ "four",
   date >= "2020-09-08" & date < "2020-12-08" ~ "five"
 ),
  sixmonth = case_when(
-  date >= "2018-05-09" & date < "2018-11-09" ~ "one",
+  date >= "2018-02-22" & date < "2018-08-22" ~ "one",
   date >= "2018-10-30" & date < "2019-04-30" ~ "two",
   date >= "2019-06-18" & date < "2019-12-18" ~ "three",
   date >= "2020-02-13" & date < "2020-08-13" ~ "four",
@@ -216,7 +246,99 @@ env2_sixmonth <- env2 %>%
   rename(dataset = sixmonth)
 ```
 
-```{r combine env2 and change datasets}
+
+```{r prep env data - for with 9 mos}
+env3 <- full_join(sea_lev, temp, by = "date")
+env3 <- full_join(env3, rain, by = "date") %>% 
+  rename("min_sealev" = "Minimum",
+         "max_sealev" = "Maximum",
+         "mean_sealev" = "Mean",
+         "sd_sealev" = "St Devn")
+
+env3 <- env3 %>% 
+  mutate(fullperiod = case_when(
+  date >= "2017-02-03" & date < "2017-10-19" ~ "one",
+  date >= "2017-10-19" & date < "2018-08-22" ~ "two",
+  date >= "2018-08-22" & date < "2019-04-30" ~ "three",
+  date >= "2019-04-30" & date < "2019-12-18" ~ "four",
+  date >= "2019-12-18" & date < "2020-08-13" ~ "five",
+  date >= "2020-08-13" & date < "2020-12-08" ~ "six"
+),
+  prevmonth = case_when(
+  date >= "2017-09-19" & date < "2017-10-19" ~ "one",
+  date >= "2018-07-22" & date < "2018-08-22" ~ "two",
+  date >= "2019-03-30" & date < "2019-04-30" ~ "three",
+  date >= "2019-11-18" & date < "2019-12-18" ~ "four",
+  date >= "2020-07-13" & date < "2020-08-13" ~ "five",
+  date >= "2020-11-08" & date < "2020-12-08" ~ "six"
+),
+  threemonth = case_when(
+  date >= "2017-07-19" & date < "2017-10-19" ~ "one",
+  date >= "2018-05-22" & date < "2018-08-22" ~ "two",
+  date >= "2019-01-30" & date < "2019-04-30" ~ "three",
+  date >= "2019-09-18" & date < "2019-12-18" ~ "four",
+  date >= "2020-05-13" & date < "2020-08-13" ~ "five",
+  date >= "2020-09-08" & date < "2020-12-08" ~ "six"
+),
+ sixmonth = case_when(
+  date >= "2017-04-19" & date < "2017-10-19" ~ "one",
+  date >= "2018-02-22" & date < "2018-08-22" ~ "two",
+  date >= "2018-10-30" & date < "2019-04-30" ~ "three",
+  date >= "2019-06-18" & date < "2019-12-18" ~ "four",
+  date >= "2020-02-13" & date < "2020-08-13" ~ "five",
+  date >= "2020-06-08" & date < "2020-12-08" ~ "six")) %>% 
+  filter(!is.na(fullperiod))
+
+env3_fullperiod <- env3 %>% 
+  group_by(fullperiod) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
+  rename(dataset = fullperiod)
+
+env3_prevmonth <- env3 %>% 
+  group_by(prevmonth) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
+  filter(!is.na(prevmonth)) %>% 
+  rename(dataset = prevmonth) 
+
+env3_threemonth <- env3 %>% 
+  group_by(threemonth) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
+  filter(!is.na(threemonth)) %>% 
+  rename(dataset = threemonth)
+
+env3_sixmonth <- env3 %>% 
+  group_by(sixmonth) %>% 
+  summarise(max_sl_mn = mean(max_sealev, na.rm = TRUE),
+            min_sl_mn = mean(min_sealev, na.rm = TRUE),
+            mean_sl_mn = mean(mean_sealev, na.rm = TRUE),
+            sd_sl_mn = mean(sd_sealev, na.rm = TRUE),
+            rain_tot = sum(rainfall, na.rm = TRUE),
+            temp_mn = mean(temperature, na.rm = TRUE),
+            date = max(date)) %>% 
+  filter(!is.na(sixmonth)) %>% 
+  rename(dataset = sixmonth)
+```
+
+
+```{r combine env2 and change datasets - without 9 mos}
 env2_fullperiod <- left_join(allchange %>% filter(dataset != "zero"), env2_fullperiod, by = "dataset") %>% 
   mutate(rainrate = rain_tot / Diff_days)
 env2_prevmonth <- left_join(allchange %>% filter(dataset != "zero"), env2_prevmonth, by = "dataset") %>% 
@@ -227,9 +349,19 @@ env2_sixmonth <- left_join(allchange %>% filter(dataset != "zero"), env2_sixmont
   mutate(rainrate = rain_tot / Diff_days)
 ```
 
+```{r combine env3 and change datasets - with 9 mos}
+env3_fullperiod <- left_join(allchange2 %>% filter(dataset != "zero"), env3_fullperiod, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+env3_prevmonth <- left_join(allchange2 %>% filter(dataset != "zero"), env3_prevmonth, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+env3_threemonth <- left_join(allchange2 %>% filter(dataset != "zero"), env3_threemonth, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+env3_sixmonth <- left_join(allchange2 %>% filter(dataset != "zero"), env3_sixmonth, by = "dataset") %>% 
+  mutate(rainrate = rain_tot / Diff_days)
+```
 
 
-```{r explore relationships}
+```{r explore relationships - without 9 mos}
 # full period
 ggplot(env2_fullperiod, aes(max_sl_mn, growthrate, color = change)) + 
   geom_line() 
@@ -276,5 +408,56 @@ ggplot(env2_prevmonth, aes(mean_sl_mn, growthrate, color = change)) +
 ggplot(env2_prevmonth, aes(rainrate, growthrate, color = change)) + 
   geom_line() # somewhat of a negative trend for spor, sarc and overall saltmarsh
 ggplot(env2_prevmonth, aes(temp_mn, growthrate, color = change)) + 
+  geom_line()
+```
+
+
+```{r explore relationships - with 9 mos}
+# full period
+ggplot(env3_fullperiod, aes(max_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env3_fullperiod, aes(min_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env3_fullperiod, aes(mean_sl_mn, growthrate, color = change)) + 
+  geom_line()
+ggplot(env3_fullperiod, aes(rainrate, growthrate, color = change)) + 
+  geom_line()
+ggplot(env3_fullperiod, aes(temp_mn, growthrate, color = change)) + 
+  geom_line()
+
+# six months
+ggplot(env3_sixmonth, aes(max_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env3_sixmonth, aes(min_sl_mn, growthrate, color = change)) + 
+  geom_line() # maybe a trend with spor
+ggplot(env3_sixmonth, aes(mean_sl_mn, growthrate, color = change)) + 
+  geom_line() # maybe a trend with spor
+ggplot(env3_sixmonth, aes(rainrate, growthrate, color = change)) + 
+  geom_line()
+ggplot(env3_sixmonth, aes(temp_mn, growthrate, color = change)) + 
+  geom_line()
+
+# three months
+ggplot(env3_threemonth, aes(max_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env3_threemonth, aes(min_sl_mn, growthrate, color = change)) + 
+  geom_line() # maybe a trend with spor
+ggplot(env3_threemonth, aes(mean_sl_mn, growthrate, color = change)) + 
+  geom_line() # all have a rough trend
+ggplot(env3_threemonth, aes(rainrate, growthrate, color = change)) + 
+  geom_line()
+ggplot(env3_threemonth, aes(temp_mn, growthrate, color = change)) + 
+  geom_line()
+
+# one month
+ggplot(env3_prevmonth, aes(max_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env3_prevmonth, aes(min_sl_mn, growthrate, color = change)) + 
+  geom_line() 
+ggplot(env3_prevmonth, aes(mean_sl_mn, growthrate, color = change)) + 
+  geom_line() # sueda, sarc and overall saltmarsh have a bit of a trend (mostly sueda)
+ggplot(env3_prevmonth, aes(rainrate, growthrate, color = change)) + 
+  geom_line() # somewhat of a negative trend for spor, sarc and overall saltmarsh
+ggplot(env3_prevmonth, aes(temp_mn, growthrate, color = change)) + 
   geom_line()
 ```
