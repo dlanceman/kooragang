@@ -30,7 +30,7 @@ library(padr)
 
 ```{r load data - just 0.1 resolution}
 zero1 <- raster("raw/0mos_classified_0_1_all.tif")
-nine1 <- raster("raw/9mos_classified_01_all_new.tif")
+nine1 <- raster("raw/9mos_classified_evenmoremud.tif")
 eighteen1 <- raster("raw/18mos_classified_01_all.tif")
 twentysix1 <- raster("raw/26mos_classified_01_all.tif")
 thirtyfour1 <- raster("raw/34mos_classified_01_all.tif")
@@ -260,14 +260,14 @@ patch_plot <- function(y_var, ylab){
     scale_linetype_manual(values=c(2,3,4), labels = c("Sporobolus virginicus","Sarcocornia quinqueflora","Suaeda australis")) +
     labs(x = "Date", y = ylab, color = "", linetype = "") +
   theme_classic() +
-  theme(text = element_text(size = 36),
-        axis.text = element_text(size = 36),
-        axis.title = element_text(size = 40),
-        legend.text = element_text(size = 36, face = "italic"),
-        plot.margin = margin(20,20,10,10),
+  theme(text = element_text(size = 40),
+        axis.text = element_text(size = 40),
+        axis.title = element_text(size = 46),
+        legend.text = element_text(size = 40, face = "italic"),
+        plot.margin = margin(20,20,24,10),
         legend.key.size = unit(6,"line"),
         axis.text.x = element_text(vjust = -1),
-        axis.title.x = element_text(vjust = -1))
+        axis.title.x = element_text(vjust = -2))
 }
 
 land_plot <- function(y_var, ylab){
@@ -288,7 +288,7 @@ land_plot <- function(y_var, ylab){
 
 ```{r visualise trends over time}
 # mean patch area
-p_area_mn <- patch_plot(allpatch.ws$area_mn * 100 * 100, "Mean patch area (cm2)") + labs(x = "")
+p_area_mn <- patch_plot(allpatch.ws$area_mn * 100 * 100, expression(paste("Mean patch area (cm"^" 2"*")"))) + labs(x = "")
 p_area_mn
 # average patch area is stable for spor and sueda and increases over time for sarc 
 # this makes sense, as spor is usually one large connected clump that grows from itself, sueda is generally lots of spaced out clumps, and sarc colonises an area by making lots of small clumps that expand into one another
@@ -335,7 +335,8 @@ p_enn
 # spor is quite stable
 
 # clumpiness
-p_clumpy <- patch_plot(allpatch.ws$clumpy, "Clumpiness (0-1)") + labs(x = "")
+p_clumpy <- patch_plot(allpatch.ws$clumpy, "Clumpiness (0-1)") #+ labs(x = "")
+# uncomment the labs argument if exporting with 8 plots
 p_clumpy 
 # measure of how many adjacent patches are of the same class, relative to what would be expected if classes were randomly distributed
 # sueda is lower - reflecting that patches are more spread out
@@ -385,6 +386,10 @@ p_shei
 ```{r combine plots}
 # combine class level patch plots with a common legend
 ggarrange(p_area_mn, p_cai_mn, p_np, p_cohesion, p_enn, p_clumpy, p_contig, p_shape_mn, ncol = 2, nrow = 4, common.legend = TRUE, legend = "bottom", align = "hv") 
+# export at 2100 x 2800
+
+# only 6 class level plots
+ggarrange(p_area_mn, p_cai_mn, p_np, p_cohesion, p_clumpy, p_contig, ncol = 2, nrow = 3, common.legend = TRUE, legend = "bottom", align = "hv") 
 # export at 2100 x 2800
 
 # combine landscape level plots
@@ -441,17 +446,5 @@ MannKendall(ts(allpatch.sueda$shape_mn,frequency = 365, start = c(2018,313)))
 MannKendall(ts(allpatchl.w$contag,frequency = 365, start = c(2017,34)))
 MannKendall(ts(allpatchl.w$shdi,frequency = 365, start = c(2017,34))) # sig 
 MannKendall(ts(allpatchl.w$shei,frequency = 365, start = c(2017,34)))
-```
-
-
-Differences between groups - Repeated measures ANOVAs
-
-Assumptions of repeated measures ANOVAs
-- independence- observations are independent (taken at diff times)
-- normality
-- sphericity
-
-```{r}
-
 ```
 
