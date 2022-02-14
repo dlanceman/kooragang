@@ -14,9 +14,6 @@ knitr::opts_knit$set(root.dir = 'C:/Users/danal/OneDrive - UNSW/Desktop/WRL/R')
 
 ```{r get packages}
 library(tidyverse)
-#library(clusterGeneration)
-#library(mnormt)
-#library(corrplot)
 library(readxl)
 library(viridis)
 library(hrbrthemes)
@@ -27,6 +24,7 @@ library(broom)
 ```{r get data}
 var_imp <- read_excel("raw/variable_importance_allvars.xlsx", sheet = "Sheet1")
 
+# assign band names to numbers
 var_imp <- var_imp %>% 
   group_by(Dataset) %>% 
   mutate(rank = 57 - rank(Importance),
@@ -63,24 +61,28 @@ var_imp <- var_imp %>%
              Band == 5 ~ "REG",
              Band == 6 ~ "Red",
              TRUE ~ "NA")),
+         # create column that is a combination of the band and feature ("variable")
          bandvar = case_when(Variable %in% c("Area", "Perimeter") ~ Variable,
                              TRUE ~ paste(Variable, bandname, sep = "_")),
+         # rename some of the features ("variables")
          Variable = case_when(Variable == "Corr" ~ "Correlation",
                               Variable == "Kurt" ~ "Kurtosis",
                               Variable == "SD" ~ "Standard deviation",
                               TRUE ~ Variable) %>% as.factor(),
+         # assign zero to non-band-specific features
          Band = case_when(is.na(Band) ~ 0,
                           TRUE ~ Band),
+         # make bandname a factor type of variable
          bandname = factor(bandname, levels = c("Elev", "NDVI", "Green", "Red", "NIR", "REG","NA")),
          ln.imp = log(Importance)) %>% 
   ungroup()
 ```
 
-```{r plot band/variable importance}
+```{r visualise differences - plot band/variable importance}
+# visualise differences in rank between bands and features ("variables")
 # Plot bands
 ggplot(var_imp %>% filter(!is.na(bandname)), aes(bandname, rank)) +
   geom_boxplot()
-
 
 # plot variables
 ggplot(var_imp %>% filter(!is.na(Variable)), aes(Variable, rank)) +
@@ -96,9 +98,16 @@ ggplot(var_imp %>% filter(!is.na(Band)), aes(bandname, rank)) +
   geom_boxplot()  +
   facet_wrap(~Variable)
 
-# export at 2100 x 1200
 
-# plot importance rather than rank - use this plot
+# bands - importance not rank
+ggplot(var_imp, aes(bandname, Importance, group = Dataset)) +
+  geom_boxplot() 
+```
+
+
+```{r use this plot - plot band/variable importance with facets}
+# export at 2100 x 2100
+
 ggplot(var_imp %>% filter(Band != 0), aes(bandname, Importance)) +
   geom_boxplot(lwd = 1, fatten = 1, outlier.size=2, color ="black")  +
   facet_wrap(~Variable) + 
@@ -108,20 +117,10 @@ ggplot(var_imp %>% filter(Band != 0), aes(bandname, Importance)) +
         axis.text = element_text(size = 30),
         panel.grid.major = element_blank(), # remove grid lines
         panel.grid.minor = element_blank())
-
-ggplot(var_imp %>% filter(!is.na(Band)), aes(bandname, Importance)) +
-  geom_boxplot()  +
-  facet_wrap(~Variable) + 
-  labs(x = "Band") +
-  scale_y_log10() # plot y axis on log scale 
-
-ggplot(var_imp, aes(bandname, Importance, group = Dataset)) +
-  geom_boxplot() 
-  
 ```
 
 
-```{r mean importance of each variable}
+```{r summary stats - mean importance of each variable}
 mean_imp <- var_imp %>% group_by(bandvar) %>% summarise(mean(Importance))
 median_imp <- var_imp %>% group_by(bandvar) %>% summarise(median(Importance))
 ```
@@ -138,6 +137,7 @@ Assumptions
 - normality
 
 ```{r cleveland plot}
+# look for outliers and data distribution
 cleveland_plot <- function(vector,axislab){
   par(mfrow= c(1,2), mar = c(5,4,2,1)) # set some parameters for the plot
   boxplot(vector,  ylab = axislab)
@@ -149,6 +149,7 @@ cleveland_plot(var_imp$rank, "Rank") # perfect
 ```
 
 ```{r diagnostic plots}
+# look for normality and equal variances 
 par(mfrow = c(2, 2))
 plot(aov(Importance~Variable*bandname,var_imp)) # top left equal variances, top right normality 
 par(mfrow = c(1, 1))
@@ -182,6 +183,6 @@ tukey_df %>% filter(firstvar == "Mean.Green") # greater than 53 vars
 tukey_df %>% filter(firstvar == "Mean.NIR") # greater than 50 vars
 tukey_df %>% filter(firstvar == "Mean.REG") # greater than 50 vars
 tukey_df %>% filter(firstvar == "Mean.Red") # greater than 50 vars
-tukey_df %>% filter(secondvar == "Perimeter.NA")
+tukey_df %>% filter(secondvar == "Perimeter.NA") # less than 13 vars
 ```
 
