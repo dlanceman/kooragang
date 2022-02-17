@@ -49,7 +49,6 @@ ch46minus42t <- raster("raw/change_tiffs/46mos_minus_42mos.tif")
 ch42minus34t <- raster("raw/change_tiffs/42mos_minus_34mos.tif")
 ch34minus26t <- raster("raw/change_tiffs/34mos_minus_26mos.tif")
 ch26minus18t <- raster("raw/change_tiffs/26mos_minus_18mos.tif")
-ch18minus0t <- raster("raw/change_tiffs/18mos_minus_0mos.tif")
 ch18minus9t <- raster("raw/change_tiffs/18mos_minus_9mos_moremud.tif")
 ch9minus0t <- raster("raw/change_tiffs/9mos_minus_0mos_moremud.tif")
 
@@ -111,9 +110,6 @@ ch34minus26c <- mask(ch34minus26c, boundary)
 ch26minus18c <- crop(ch26minus18t, extent(boundary)) 
 ch26minus18c <- mask(ch26minus18c, boundary)
 
-ch18minus0c <- crop(ch18minus0t, extent(boundary)) 
-ch18minus0c <- mask(ch18minus0c, boundary)
-
 ch18minus9c <- crop(ch18minus9t, extent(boundary)) 
 ch18minus9c <- mask(ch18minus9c, boundary)
 
@@ -129,7 +125,7 @@ demc <- mask(demc, boundary)
 
 
 # resample dem to same (coarser) resolution as classified images
-# also resample all datasets to nine1c as they are all slightly different 
+# also resample all classified images to nine1c as they all have slightly different resolutions, and the same resolution is required for processing
 dem_res <- raster::resample(demc, nine1c, method = "bilinear")
 zero_res <- raster::resample(zero1c, nine1c, method = "ngb")
 eighteen_res <- raster::resample(eighteen1c, nine1c, method = "ngb")
@@ -143,7 +139,6 @@ ch46minus42_res <- raster::resample(ch46minus42c, nine1c, method = "ngb")
 ch42minus34_res <- raster::resample(ch42minus34c, nine1c, method = "ngb")
 ch34minus26_res <- raster::resample(ch34minus26c, nine1c, method = "ngb")
 ch26minus18_res <- raster::resample(ch26minus18c, nine1c, method = "ngb")
-ch18minus0_res <- raster::resample(ch18minus0c, nine1c, method = "ngb")
 ch18minus9_res <- raster::resample(ch18minus9c, nine1c, method = "ngb")
 ch9minus0_res <- raster::resample(ch9minus0c, nine1c, method = "ngb")
 
@@ -166,148 +161,65 @@ plot(fortysix_res)
 
 Calculate zonal statistics 
 
-count is irrelevant - remove
+I'm just using means, but SD, min, max, sum and count can also be calculated
 
 ```{r zero months}
-zero_mean <- zonal(dem_res, zero_res, fun = "mean", digits = 2)
-zero_sd <- zonal(dem_res, zero_res, fun = "sd", digits = 2)
-zero_min <- zonal(dem_res, zero_res, fun = "min", digits = 2)
-zero_max <- zonal(dem_res, zero_res, fun = "max", digits = 2)
-zero_count <- zonal(dem_res, zero_res, fun = "count", digits = 2)
-
-zero_demstats <- combine(zero_mean, zero_sd, zero_min, zero_max, zero_count) %>% 
-  mutate(dataset = 0)
-zero_demstats$source <-  recode(zero_demstats$source, 
-         "zero_mean" = "mean",
-         "zero_sd" = "sd",
-         "zero_min" = "min",
-         "zero_max" = "max",
-         "zero_count" = "count") 
-zero_demstats$category <- c("na", "spor","sarc", "grass", "mud", "water", "white_vege","road")
+zero_mean <- zonal(dem_res, zero_res, fun = "mean", digits = 2) %>% 
+  as.data.frame() %>% 
+  mutate(dataset = 0,
+         category = c("na", "spor","sarc", "grass", "mud", "water", "white_vege","road"))
 ```
 
 ```{r nine months}
-nine_mean <- zonal(dem_res, nine1c, fun = "mean", digits = 2)
-nine_sd <- zonal(dem_res, nine1c, fun = "sd", digits = 2)
-nine_min <- zonal(dem_res, nine1c, fun = "min", digits = 2)
-nine_max <- zonal(dem_res, nine1c, fun = "max", digits = 2)
-nine_count <- zonal(dem_res, nine1c, fun = "count", digits = 2)
-
-nine_demstats <- combine(nine_mean, nine_sd, nine_min, nine_max, nine_count) %>% 
-  mutate(dataset = 9)
-nine_demstats$source <-  recode(nine_demstats$source, 
-         "nine_mean" = "mean",
-         "nine_sd" = "sd",
-         "nine_min" = "min",
-         "nine_max" = "max",
-         "nine_count" = "count") 
-nine_demstats$category <- c("na", "spor", "sarc",  "grass", "mud", "water", "white_vege", "road") # add categories
+nine_mean <- zonal(dem_res, nine1c, fun = "mean", digits = 2) %>% 
+  as.data.frame() %>% 
+  mutate(dataset = 9,
+         category = c("na", "spor", "sarc",  "grass", "mud", "water", "white_vege", "road"))
 ```
 
 ```{r eighteen months}
-eighteen_mean <- zonal(dem_res, eighteen_res, fun = "mean", digits = 2)
-eighteen_sd <- zonal(dem_res, eighteen_res, fun = "sd", digits = 2)
-eighteen_min <- zonal(dem_res, eighteen_res, fun = "min", digits = 2)
-eighteen_max <- zonal(dem_res, eighteen_res, fun = "max", digits = 2)
-eighteen_count <- zonal(dem_res, eighteen_res, fun = "count", digits = 2)
-
-eighteen_demstats <- combine(eighteen_mean, eighteen_sd, eighteen_min, eighteen_max, eighteen_count) %>% 
-  mutate(dataset = 18)
-eighteen_demstats$source <-  recode(eighteen_demstats$source, 
-         "eighteen_mean" = "mean",
-         "eighteen_sd" = "sd",
-         "eighteen_min" = "min",
-         "eighteen_max" = "max",
-         "eighteen_count" = "count")
-eighteen_demstats$category <- c("na", "spor","sarc", "grass", "mud", "water","sueda","road",  "white_vege") # add categories
+eighteen_mean <- zonal(dem_res, eighteen_res, fun = "mean", digits = 2) %>% 
+  as.data.frame() %>% 
+  mutate(dataset = 18,
+         category = c("na", "spor","sarc", "grass", "mud", "water","sueda","road",  "white_vege")) 
 ```
 
 ```{r twenty six months}
-twentysix_mean <- zonal(dem_res, twentysix_res, fun = "mean", digits = 2)
-twentysix_sd <- zonal(dem_res, twentysix_res, fun = "sd", digits = 2)
-twentysix_min <- zonal(dem_res, twentysix_res, fun = "min", digits = 2)
-twentysix_max <- zonal(dem_res, twentysix_res, fun = "max", digits = 2)
-twentysix_count <- zonal(dem_res, twentysix_res, fun = "count", digits = 2)
-
-twentysix_demstats <- combine(twentysix_mean, twentysix_sd, twentysix_min, twentysix_max, twentysix_count) %>% 
-  mutate(dataset = 26)
-twentysix_demstats$source <-  recode(twentysix_demstats$source, 
-         "twentysix_mean" = "mean",
-         "twentysix_sd" = "sd",
-         "twentysix_min" = "min",
-         "twentysix_max" = "max",
-         "twentysix_count" = "count") 
-twentysix_demstats$category <- c("spor","sarc", "grass", "mud", "water","sueda", "road", "white_vege") # add categories
+twentysix_mean <- zonal(dem_res, twentysix_res, fun = "mean", digits = 2) %>%
+  as.data.frame() %>%  
+  mutate(dataset = 26,
+         category = c("spor","sarc", "grass", "mud", "water","sueda", "road", "white_vege"))
 ```
 
 ```{r thirty four months}
-thirtyfour_mean <- zonal(dem_res, thirtyfour_res, fun = "mean", digits = 2)
-thirtyfour_sd <- zonal(dem_res, thirtyfour_res, fun = "sd", digits = 2)
-thirtyfour_min <- zonal(dem_res, thirtyfour_res, fun = "min", digits = 2)
-thirtyfour_max <- zonal(dem_res, thirtyfour_res, fun = "max", digits = 2)
-thirtyfour_count <- zonal(dem_res, thirtyfour_res, fun = "count", digits = 2)
-
-thirtyfour_demstats <- combine(thirtyfour_mean, thirtyfour_sd, thirtyfour_min, thirtyfour_max, thirtyfour_count) %>% 
-  mutate(dataset = 34)
-thirtyfour_demstats$source <-  recode(thirtyfour_demstats$source, 
-         "thirtyfour_mean" = "mean",
-         "thirtyfour_sd" = "sd",
-         "thirtyfour_min" = "min",
-         "thirtyfour_max" = "max",
-         "thirtyfour_count" = "count") 
-thirtyfour_demstats$category <- c("spor","sarc","grass", "mud", "water","sueda","road", "white_vege") # add categories
+thirtyfour_mean <- zonal(dem_res, thirtyfour_res, fun = "mean", digits = 2) %>% 
+  as.data.frame() %>% 
+  mutate(dataset = 34,
+         category = c("spor","sarc","grass", "mud", "water","sueda","road", "white_vege"))
 ```
 
 ```{r forty two months}
-fortytwo_mean <- zonal(dem_res, fortytwo_res, fun = "mean", digits = 2)
-fortytwo_sd <- zonal(dem_res, fortytwo_res, fun = "sd", digits = 2)
-fortytwo_min <- zonal(dem_res, fortytwo_res, fun = "min", digits = 2)
-fortytwo_max <- zonal(dem_res, fortytwo_res, fun = "max", digits = 2)
-fortytwo_count <- zonal(dem_res, fortytwo_res, fun = "count", digits = 2)
-
-fortytwo_demstats <- combine(fortytwo_mean, fortytwo_sd, fortytwo_min, fortytwo_max, fortytwo_count) %>% 
-  mutate(dataset = 42)
-fortytwo_demstats$source <-  recode(fortytwo_demstats$source, 
-         "fortytwo_mean" = "mean",
-         "fortytwo_sd" = "sd",
-         "fortytwo_min" = "min",
-         "fortytwo_max" = "max",
-         "fortytwo_count" = "count") 
-fortytwo_demstats$category <- c("na", "spor","sarc","grass", "mud", "water","algae","road", "white_vege", "sueda") # add categories
+fortytwo_mean <- zonal(dem_res, fortytwo_res, fun = "mean", digits = 2) %>% 
+  as.data.frame() %>% 
+  mutate(dataset = 42,
+         category = c("na", "spor","sarc","grass", "mud", "water","algae","road", "white_vege", "sueda"))
 ```
 
 ```{r forty six months}
-fortysix_mean <- zonal(dem_res, fortysix_res, fun = "mean", digits = 2)
-fortysix_sd <- zonal(dem_res, fortysix_res, fun = "sd", digits = 2)
-fortysix_min <- zonal(dem_res, fortysix_res, fun = "min", digits = 2)
-fortysix_max <- zonal(dem_res, fortysix_res, fun = "max", digits = 2)
-fortysix_count <- zonal(dem_res, fortysix_res, fun = "count", digits = 2)
-
-fortysix_demstats <- combine(fortysix_mean, fortysix_sd, fortysix_min, fortysix_max, fortysix_count) %>% 
-  mutate(dataset = 46)
-fortysix_demstats$source <-  recode(fortysix_demstats$source, 
-         "fortysix_mean" = "mean",
-         "fortysix_sd" = "sd",
-         "fortysix_min" = "min",
-         "fortysix_max" = "max",
-         "fortysix_count" = "count") 
-fortysix_demstats$category <- c("spor","sarc","grass", "mud", "water","sueda","road", "white_vege") # add categories
+fortysix_mean <- zonal(dem_res, fortysix_res, fun = "mean", digits = 2) %>% 
+  as.data.frame() %>% 
+  mutate(dataset = 46,
+         category = c("spor","sarc","grass", "mud", "water","sueda","road", "white_vege"))
 ```
 
-```{r combine}
-allzonal <- rbind(zero_demstats, nine_demstats, eighteen_demstats, twentysix_demstats, thirtyfour_demstats, fortytwo_demstats, fortysix_demstats) %>% 
-  filter(category %in% c("spor", "sarc", "sueda"))
-```
-
-```{r make into wide format, add SE column}
-allzonal_wide <- allzonal %>% dplyr::select(mean, source, dataset, category) %>%
-  pivot_wider(names_from = source, values_from = mean)
-
-allzonal_wide <- allzonal_wide %>% mutate(se = sd/sqrt(count))
+```{r combine, make wide format}
+allzonal <- rbind(zero_mean, nine_mean, eighteen_mean, twentysix_mean, thirtyfour_mean, fortytwo_mean, fortysix_mean) %>% 
+  filter(category %in% c("spor", "sarc", "sueda")) %>% 
+  select(!zone)
 ```
 
 ```{r add date column}
-allzonal_wide <- allzonal_wide %>% mutate(date = case_when(
+allzonal <- allzonal %>% mutate(date = case_when(
          dataset == 0 ~ "2017/02/03",
          dataset == 9 ~ "2017/10/19",
          dataset == 18 ~ "2018/08/22",
@@ -315,7 +227,7 @@ allzonal_wide <- allzonal_wide %>% mutate(date = case_when(
          dataset == 34 ~ "2019/12/18",
          dataset == 42 ~ "2020/08/13",
          dataset == 46 ~ "2020/12/08")) 
-allzonal_wide$date <- as.Date(allzonal_wide$date)
+allzonal$date <- as.Date(allzonal$date)
 ```
 
 
@@ -325,7 +237,7 @@ does the elevation that different saltmarsh grows at differ between species and 
 
 ```{r plot function}
 plot_elev <- function(variable){
-  ggplot(allzonal_wide) +
+  ggplot(allzonal) +
   aes(x = date, y = variable, color = category, linetype = category) +
   geom_line(size = 3) +
     scale_color_manual(values = c("#1fbfad", "#f2c80c", "#5c0b1f"), labels = c("Sarcocornia","Sporobolus","Suaeda")) +
@@ -335,30 +247,33 @@ plot_elev <- function(variable){
   guides(color = guide_legend(byrow = TRUE)) + # for legend spacing 
   theme(axis.text = element_text(size = 40),
         axis.title = element_text(size = 54),
+        axis.text.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+        axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+        axis.text.x = element_text(vjust = -1),
+        axis.title.x = element_text(vjust = -1),
         legend.text = element_text(size = 30),
         legend.title = element_text(size = 36),
-        plot.margin = margin(20,20,10,10),
+        plot.margin = margin(20,20,20,10),
         legend.spacing.y = unit(1, "cm"),
-        legend.key.size = unit(3,"line"),
-        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)))
+        legend.key.size = unit(3,"line"))
 }
 ```
 
 
 ```{r plot mean elevation}
-plot_elev(allzonal_wide$mean)
+plot_elev(allzonal$mean)
 # export at 2100 x 1400
 ```
 
-max and min are unhelpful, show some extreme outliers that have incorrect DEM values (i.e. both negative values and values > 2 m are incorrect for this wetland)
+
 
 # Elevation Trend analysis 
 Did mean elevation change over time for each species?
 
 ```{r pad time series}
-allzonal.spor <- allzonal_wide %>% filter(category == "spor") %>% pad()
-allzonal.sarc <- allzonal_wide %>% filter(category == "sarc") %>% pad() # sig
-allzonal.sueda <- allzonal_wide %>% filter(category == "sueda") %>% pad()
+allzonal.spor <- allzonal %>% filter(category == "spor") %>% pad()
+allzonal.sarc <- allzonal %>% filter(category == "sarc") %>% pad() # sig
+allzonal.sueda <- allzonal %>% filter(category == "sueda") %>% pad()
 ```
 
 ```{r Kendall rank correlations}
@@ -369,22 +284,21 @@ MannKendall(ts(allzonal.sueda$mean,frequency = 365, start = c(2018,313)))
 ```
 
 
-also consider clipping e.g. final image by each saltmarsh class, and then mapping frequency distribution at different elevations
+
 
 # Elevation - compare elevation of areas of saltmarsh growth vs loss
 
-```{r 46 mos minus 0 mos}
-ch_mean <- zonal(dem_res, ch46minus0_res, fun = "mean", digits = 2)
-ch_sd <- zonal(dem_res, ch46minus0_res, fun = "sd", digits = 2)
-ch_min <- zonal(dem_res, ch46minus0_res, fun = "min", digits = 2)
-ch_max <- zonal(dem_res, ch46minus0_res, fun = "max", digits = 2)
+Calculate mean and SD in this scenario, to visualise the distribution of elevations that different processes are occuring at
 
-ch_demstats <- combine(ch_mean, ch_sd, ch_min, ch_max) 
+```{r 46 mos minus 0 mos}
+ch_mean <- zonal(dem_res, ch46minus0_res, fun = "mean", digits = 2) 
+ch_sd <- zonal(dem_res, ch46minus0_res, fun = "sd", digits = 2)
+
+ch_demstats <- combine(ch_mean, ch_sd) 
 ch_demstats$source <-  recode(ch_demstats$source, 
          "ch_mean" = "mean",
-         "ch_sd" = "sd",
-         "ch_min" = "min",
-         "ch_max" = "max") 
+         "ch_sd" = "sd") 
+ 
 ch_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
 ```
 
@@ -399,12 +313,15 @@ ch_demstats_wide <- ch_demstats %>% dplyr::select(mean, source, category) %>%
 # graph with SD range
 ggplot(ch_demstats_wide, aes(category, mean, ymin = mean-sd, ymax = mean+sd)) +
   geom_point(size = 5) +
-  geom_errorbar(size = 2) +
-  labs(y = "Mean elevation", x = "") +
+  geom_errorbar(size = 2, width = 0.5) +
+  labs(y = "Mean elevation (m)", x = "") +
   theme_bw() +
   scale_x_discrete(labels= c("Sarc growth", "Sarc loss", "Sarc to Spor", "Spor growth", "Spor loss", "Spor to Sarc")) +
   theme(axis.title = element_text(size = 48),
         axis.text = element_text(size = 36),
+        axis.text.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+        axis.text.x = element_text(vjust = -1),
         panel.grid.major = element_blank(), # remove grid lines
         panel.grid.minor = element_blank())
 ```
@@ -414,176 +331,74 @@ ggplot(ch_demstats_wide, aes(category, mean, ymin = mean-sd, ymax = mean+sd)) +
 
 
 ```{r 46 mos minus 42 mos}
-ch42_mean <- zonal(dem_res, ch46minus42_res, fun = "mean", digits = 2)
-ch42_sd <- zonal(dem_res, ch46minus42_res, fun = "sd", digits = 2)
-ch42_min <- zonal(dem_res, ch46minus42_res, fun = "min", digits = 2)
-ch42_max <- zonal(dem_res, ch46minus42_res, fun = "max", digits = 2)
-
-ch42_demstats <- combine(ch42_mean, ch42_sd, ch42_min, ch42_max) %>% 
-  mutate(dataset = 46) 
-ch42_demstats$source <-  recode(ch42_demstats$source, 
-         "ch42_mean" = "mean",
-         "ch42_sd" = "sd",
-         "ch42_min" = "min",
-         "ch42_max" = "max")  
-ch42_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+ch42_mean <- zonal(dem_res, ch46minus42_res, fun = "mean", digits = 2) %>% 
+  as.data.frame() %>% 
+  mutate(dataset = 46,
+         category = c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth"))
 ```
 
 
 ```{r 42 mos minus 34 mos}
-ch34_mean <- zonal(dem_res, ch42minus34_res, fun = "mean", digits = 2)
-ch34_sd <- zonal(dem_res, ch42minus34_res, fun = "sd", digits = 2)
-ch34_min <- zonal(dem_res, ch42minus34_res, fun = "min", digits = 2)
-ch34_max <- zonal(dem_res, ch42minus34_res, fun = "max", digits = 2)
-
-ch34_demstats <- combine(ch34_mean, ch34_sd, ch34_min, ch34_max) %>% 
-  mutate(dataset = 42)
-ch34_demstats$source <-  recode(ch34_demstats$source, 
-         "ch34_mean" = "mean",
-         "ch34_sd" = "sd",
-         "ch34_min" = "min",
-         "ch34_max" = "max") 
-ch34_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+ch34_mean <- zonal(dem_res, ch42minus34_res, fun = "mean", digits = 2) %>%  
+  as.data.frame() %>% 
+  mutate(dataset = 42, 
+         category = c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth"))
 ```
-
 
 
 ```{r 34 mos minus 26 mos}
-ch26_mean <- zonal(dem_res, ch34minus26_res, fun = "mean", digits = 2)
-ch26_sd <- zonal(dem_res, ch34minus26_res, fun = "sd", digits = 2)
-ch26_min <- zonal(dem_res, ch34minus26_res, fun = "min", digits = 2)
-ch26_max <- zonal(dem_res, ch34minus26_res, fun = "max", digits = 2)
-
-ch26_demstats <- combine(ch26_mean, ch26_sd, ch26_min, ch26_max) %>% 
-  mutate(dataset = 34)
-ch26_demstats$source <-  recode(ch26_demstats$source, 
-         "ch26_mean" = "mean",
-         "ch26_sd" = "sd",
-         "ch26_min" = "min",
-         "ch26_max" = "max") 
-ch26_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+ch26_mean <- zonal(dem_res, ch34minus26_res, fun = "mean", digits = 2) %>%  
+  as.data.frame() %>% 
+  mutate(dataset = 34, 
+         category = c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth"))
 ```
-
 
 
 ```{r 26 mos minus 18 mos}
-ch18_mean <- zonal(dem_res, ch26minus18_res, fun = "mean", digits = 2)
-ch18_sd <- zonal(dem_res, ch26minus18_res, fun = "sd", digits = 2)
-ch18_min <- zonal(dem_res, ch26minus18_res, fun = "min", digits = 2)
-ch18_max <- zonal(dem_res, ch26minus18_res, fun = "max", digits = 2)
-
-ch18_demstats <- combine(ch18_mean, ch18_sd, ch18_min, ch18_max) %>% 
-  mutate(dataset = 26)
-ch18_demstats$source <-  recode(ch18_demstats$source, 
-         "ch18_mean" = "mean",
-         "ch18_sd" = "sd",
-         "ch18_min" = "min",
-         "ch18_max" = "max") 
-ch18_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
-```
-
-
-
-```{r 18 mos minus 0 mos}
-ch0_mean <- zonal(dem_res, ch18minus0_res, fun = "mean", digits = 2)
-ch0_sd <- zonal(dem_res, ch18minus0_res, fun = "sd", digits = 2)
-ch0_min <- zonal(dem_res, ch18minus0_res, fun = "min", digits = 2)
-ch0_max <- zonal(dem_res, ch18minus0_res, fun = "max", digits = 2)
-
-ch0_demstats <- combine(ch0_mean, ch0_sd, ch0_min, ch0_max) %>% 
-  mutate(dataset = 18)
-ch0_demstats$source <-  recode(ch0_demstats$source, 
-         "ch0_mean" = "mean",
-         "ch0_sd" = "sd",
-         "ch0_min" = "min",
-         "ch0_max" = "max") 
-ch0_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+ch18_mean <- zonal(dem_res, ch26minus18_res, fun = "mean", digits = 2) %>%  
+  as.data.frame() %>% 
+  mutate(dataset = 26, 
+         category = c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth"))
 ```
 
 
 ```{r 18 mos minus 9 mos}
-ch18_9_mean <- zonal(dem_res, ch18minus9_res, fun = "mean", digits = 2)
-ch18_9_sd <- zonal(dem_res, ch18minus9_res, fun = "sd", digits = 2)
-ch18_9_min <- zonal(dem_res, ch18minus9_res, fun = "min", digits = 2)
-ch18_9_max <- zonal(dem_res, ch18minus9_res, fun = "max", digits = 2)
-
-ch18_9_demstats <- combine(ch18_9_mean, ch18_9_sd, ch18_9_min, ch18_9_max) %>% 
-  mutate(dataset = 18)
-ch18_9_demstats$source <-  recode(ch18_9_demstats$source, 
-         "ch18_9_mean" = "mean",
-         "ch18_9_sd" = "sd",
-         "ch18_9_min" = "min",
-         "ch18_9_max" = "max") 
-ch18_9_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+ch18_9_mean <- zonal(dem_res, ch18minus9_res, fun = "mean", digits = 2) %>%  
+  as.data.frame() %>% 
+  mutate(dataset = 18,
+         category = c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth"))
 ```
-
 
 
 ```{r 9 mos minus 0 mos}
-ch9_0_mean <- zonal(dem_res, ch9minus0_res, fun = "mean", digits = 2)
-ch9_0_sd <- zonal(dem_res, ch9minus0_res, fun = "sd", digits = 2)
-ch9_0_min <- zonal(dem_res, ch9minus0_res, fun = "min", digits = 2)
-ch9_0_max <- zonal(dem_res, ch9minus0_res, fun = "max", digits = 2)
-
-ch9_0_demstats <- combine(ch9_0_mean, ch9_0_sd, ch9_0_min, ch9_0_max) %>% 
-  mutate(dataset = 9)
-ch9_0_demstats$source <-  recode(ch9_0_demstats$source, 
-         "ch9_0_mean" = "mean",
-         "ch9_0_sd" = "sd",
-         "ch9_0_min" = "min",
-         "ch9_0_max" = "max") 
-ch9_0_demstats$category <- c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth")
+ch9_0_mean <- zonal(dem_res, ch9minus0_res, fun = "mean", digits = 2) %>%  
+  as.data.frame() %>% 
+  mutate(dataset = 9, 
+         category = c("Sarcocornia loss", "Sarcocornia to Sporobolus","Sporobolus loss", "No change", "Sporobolus growth", "Sporobolus to Sarcocornia", "Sarcocornia growth"))
 ```
 
 
 
-
-```{r combine - no 9 mos}
-growthzonal <- rbind(ch42_demstats, ch34_demstats, ch26_demstats, ch18_demstats, ch0_demstats) %>% 
-  filter(category != "No change")
+```{r combine change datasets}
+growthzonal <- rbind(ch42_mean, ch34_mean, ch26_mean, ch18_mean, ch18_9_mean, ch9_0_mean) %>% 
+  filter(category != "No change") %>% 
+  select(!zone)
 ```
 
-```{r make into wide format - no 9 mos}
-growthzonal_wide <- growthzonal %>% dplyr::select(mean, source, dataset, category) %>%
-  pivot_wider(names_from = source, values_from = mean)
-```
-
-```{r add date column - no 9 mos}
-growthzonal_wide <- growthzonal_wide %>% mutate(date = case_when(
-         dataset == 180 ~ "2018/08/22",
-         dataset == 26 ~ "2019/04/30",
-         dataset == 34 ~ "2019/12/18",
-         dataset == 42 ~ "2020/08/13",
-         dataset == 46 ~ "2020/12/08")) 
-growthzonal_wide$date <- as.Date(growthzonal_wide$date)
-```
-
-
-```{r combine - with 9 mos}
-growthzonal2 <- rbind(ch42_demstats, ch34_demstats, ch26_demstats, ch18_demstats, ch18_9_demstats, ch9_0_demstats) %>% 
-  filter(category != "No change")
-```
-
-```{r make into wide format - with 9 mos}
-growthzonal2_wide <- growthzonal2 %>% dplyr::select(mean, source, dataset, category) %>%
-  pivot_wider(names_from = source, values_from = mean)
-```
-
-```{r add date column - with 9 mos}
-growthzonal2_wide <- growthzonal2_wide %>% mutate(date = case_when(
+```{r add date column}
+growthzonal <- growthzonal %>% mutate(date = case_when(
          dataset == 9 ~ "2017/10/19",
          dataset == 18 ~ "2018/08/22",
          dataset == 26 ~ "2019/04/30",
          dataset == 34 ~ "2019/12/18",
          dataset == 42 ~ "2020/08/13",
          dataset == 46 ~ "2020/12/08")) 
-growthzonal2_wide$date <- as.Date(growthzonal2_wide$date)
+growthzonal$date <- as.Date(growthzonal$date)
 ```
 
 
-
-```{r plot - no 9 mos}
-ggplot(growthzonal_wide) +
+```{r plot}
+ggplot(growthzonal) +
   aes(x = dataset, y = mean, color = category, linetype = category) +
   geom_line(size = 3) +
     labs(x = "Months since restoration", y = "Mean elevation (m)", color = "", linetype = "") +
@@ -594,82 +409,13 @@ ggplot(growthzonal_wide) +
         axis.title = element_text(size = 54),
         legend.text = element_text(size = 30),
         legend.title = element_text(size = 36),
-        plot.margin = margin(20,20,10,10),
+        plot.margin = margin(20,20,20,10),
         legend.spacing.y = unit(1, "cm"),
         legend.key.size = unit(3,"line"),
         axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)))
 
 # export at 2100 x 1400
 ```
-
-
-```{r plot - with 9 mos}
-ggplot(growthzonal2_wide) +
-  aes(x = dataset, y = mean, color = category, linetype = category) +
-  geom_line(size = 3) +
-    labs(x = "Months since restoration", y = "Mean elevation (m)", color = "", linetype = "") +
-  #scale_x_date(date_breaks = "1 year", date_labels =  "%Y") +
-  theme_classic() +
-  guides(color = guide_legend(byrow = TRUE)) + # for legend spacing 
-  theme(axis.text = element_text(size = 40),
-        axis.title = element_text(size = 54),
-        legend.text = element_text(size = 30),
-        legend.title = element_text(size = 36),
-        plot.margin = margin(20,20,10,10),
-        legend.spacing.y = unit(1, "cm"),
-        legend.key.size = unit(3,"line"),
-        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)))
-
-# export at 2100 x 1400
-```
-
-
-# Elevation Trends in growth/loss 
-Did mean elevation change over time for each species?
-Do we actually care about these statistics??
-
-```{r pad time series - no 9 mos}
-growthzonal.spor.l <- growthzonal_wide %>% filter(category == "Sporobolus loss") %>% pad()
-growthzonal.sarc.l <- growthzonal_wide %>% filter(category == "Sarcocornia loss") %>% pad() 
-growthzonal.sportosarc <- growthzonal_wide %>% filter(category == "Sporobolus to Sarcocornia") %>% pad()
-growthzonal.spor.g <- growthzonal_wide %>% filter(category == "Sporobolus growth") %>% pad()
-growthzonal.sarc.g <- growthzonal_wide %>% filter(category == "Sarcocornia growth") %>% pad() 
-growthzonal.sarctospor <- growthzonal_wide %>% filter(category == "Sarcocornia to Sporobolus") %>% pad()
-```
-
-```{r Kendall rank correlations - no 9 mos}
-MannKendall(ts(growthzonal.spor.l$mean,frequency = 365, start = c(2018,313)))
-MannKendall(ts(growthzonal.sarc.l$mean,frequency = 365, start = c(2018,313))) #near sig
-MannKendall(ts(growthzonal.sportosarc$mean,frequency = 365, start = c(2018,313))) #near sig
-MannKendall(ts(growthzonal.spor.g$mean,frequency = 365, start = c(2018,313)))
-MannKendall(ts(growthzonal.sarc.g$mean,frequency = 365, start = c(2018,313))) #near sig
-MannKendall(ts(growthzonal.sarctospor$mean,frequency = 365, start = c(2018,313))) #near sig
-
-# insufficient power with only 5 observations - near significant for 4 
-```
-
-
-```{r pad time series - with 9 mos}
-growthzonal2.spor.l <- growthzonal2_wide %>% filter(category == "Sporobolus loss") %>% pad()
-growthzonal2.sarc.l <- growthzonal2_wide %>% filter(category == "Sarcocornia loss") %>% pad() 
-growthzonal2.sportosarc <- growthzonal2_wide %>% filter(category == "Sporobolus to Sarcocornia") %>% pad()
-growthzonal2.spor.g <- growthzonal2_wide %>% filter(category == "Sporobolus growth") %>% pad()
-growthzonal2.sarc.g <- growthzonal2_wide %>% filter(category == "Sarcocornia growth") %>% pad() 
-growthzonal2.sarctospor <- growthzonal2_wide %>% filter(category == "Sarcocornia to Sporobolus") %>% pad()
-```
-
-```{r Kendall rank correlations - with 9 mos}
-MannKendall(ts(growthzonal2.spor.l$mean,frequency = 365, start = c(2017,292)))
-MannKendall(ts(growthzonal2.sarc.l$mean,frequency = 365, start = c(2017,292))) #near sig
-MannKendall(ts(growthzonal2.sportosarc$mean,frequency = 365, start = c(2017,292))) #near sig
-MannKendall(ts(growthzonal2.spor.g$mean,frequency = 365, start = c(2017,292)))
-MannKendall(ts(growthzonal2.sarc.g$mean,frequency = 365, start = c(2017,292))) #near sig
-MannKendall(ts(growthzonal2.sarctospor$mean,frequency = 365, start = c(2017,292))) # sig
-
-# the last one is now significant
-```
-
-
 
 
 # Memory issues?
