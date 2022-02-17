@@ -105,7 +105,7 @@ possible_metrics <- list_lsm() # list of all possible metrics
 # make a list of rasters
 raster_names <- list(zero1, nine1, eighteen1, twsix1.crop, thirtyfour1, fortytwo1, fosix1.crop)
 
-# make a function to add dataset names and categsories to data
+# make a function to add dataset names and categories to data
 add.metadata <- function(x){
   x %>% mutate(
   dataset = case_when(id == 1 ~ "zero",
@@ -146,27 +146,21 @@ add.meta.land <- function(x){
 # CLASS METRICS
 # area and edge metrics
 area.means <- lapply(raster_names, lsm_c_area_mn) %>% bind_rows(.id = "id") %>% add.metadata()  # patch area, mean
-area.sds <- lapply(raster_names, lsm_c_area_sd) %>% bind_rows(.id = "id") %>% add.metadata() # patch area, sd
 area.totals <- lapply(raster_names, lsm_c_ca) %>% bind_rows(.id = "id") %>% add.metadata() # total class area
 
 # core area metrics
 cai.mns <- lapply(raster_names, lsm_c_cai_mn) %>% bind_rows(.id = "id") %>% add.metadata() # core area index, mean
-cai.sds <- lapply(raster_names, lsm_c_cai_sd) %>% bind_rows(.id = "id") %>% add.metadata() # core area index, sd
 core.mns <- lapply(raster_names, lsm_c_core_mn) %>% bind_rows(.id = "id") %>% add.metadata() # alternative core area, mean
-core.sds <- lapply(raster_names, lsm_c_core_sd) %>% bind_rows(.id = "id") %>% add.metadata() # alternative core area, sd
 
 # aggregation metrics
 nps <- lapply(raster_names, lsm_c_np) %>% bind_rows(.id = "id") %>% add.metadata() # number of patches
 cohesions <- lapply(raster_names, lsm_c_cohesion) %>% bind_rows(.id = "id") %>% add.metadata() # cohesion
 enn.mns <- lapply(raster_names, lsm_c_enn_mn) %>% bind_rows(.id = "id") %>% add.metadata() # euclidean nearest neighbour distance, mean
-enn.sds <- lapply(raster_names, lsm_c_enn_sd) %>% bind_rows(.id = "id") %>% add.metadata() # euclidean nearest neighbour distance, sd
 clumpys <- lapply(raster_names, lsm_c_clumpy) %>% bind_rows(.id = "id") %>% add.metadata() # clumpiness
 
 # shape metrics
 contig.mns <- lapply(raster_names, lsm_c_contig_mn) %>% bind_rows(.id = "id") %>% add.metadata() # contiguity, mean
-contig.sds <- lapply(raster_names, lsm_c_contig_sd) %>% bind_rows(.id = "id") %>% add.metadata() # contiguity, sd
 shape.mns <- lapply(raster_names, lsm_c_shape_mn) %>% bind_rows(.id = "id") %>% add.metadata() # shape index, mean
-shape.sds <- lapply(raster_names, lsm_c_shape_sd) %>% bind_rows(.id = "id") %>% add.metadata() # shape index, sd
 
 
 # need to put landscape metrics in a diff table- not compatible - so recode
@@ -185,7 +179,7 @@ shan.evens <- lapply(raster_names, lsm_l_shei) %>% bind_rows(.id = "id") %>% add
 
 
 # combine outputs   
-allpatchc <- rbind(area.means, area.sds, area.totals, core.mns, core.sds, cai.mns, cai.sds, nps, cohesions, enn.mns, enn.sds, clumpys, contig.mns, contig.sds, shape.mns, shape.sds) # bind all class metric outputs into one tibble
+allpatchc <- rbind(area.means, area.totals, core.mns, cai.mns, nps, cohesions, enn.mns, clumpys, contig.mns, shape.mns) # bind all class metric outputs into one tibble
 
 allpatchl <- rbind(contags, shan.divs, shan.evens)
 
@@ -214,6 +208,7 @@ allpatchl.w <- allpatchl %>% dplyr::select(metric, value, dataset) %>% pivot_wid
 ```{r import patch metrics data}
 # generated from above script. Just because it takes so long to generate and doesn't work on computers with insufficient memory
 
+# note that the class metrics data have a few extra variables that were originally calculated - SDs for several variables
 allpatch.w <- read.csv("export/csv/classmetrics.csv")
 allpatchl.w <- read.csv("export/csv/landmetrics.csv")
 
@@ -242,7 +237,7 @@ allpatchl.w$date <- as.Date(allpatchl.w$date)
 
 # visualisation
 
-probably just visualise saltmarsh classes! could have made an overall saltmarsh class first... but didn't. can consider later if we really want it and want this to run for another 3 1/2 hours
+Just visualise saltmarsh classes
 
 ```{r subset for only saltmarsh classes}
 allpatch.ws <- allpatch.w %>% filter(category %in% c("spor", "sarc", "sueda")) %>% mutate(category = as.factor(category))
@@ -376,7 +371,7 @@ p_shdi
 # over time, the landscape has become more diverse, potentially because the area of each class has become more similar due to sarc growth and mud decrease?
 
 # shannon evenness
-p_shei <- land_plot(allpatchl.w$shei, "Shannon's evenness (0-1)")
+p_shei <- land_plot(allpatchl.w$shei, "Shannon's evenness")
 p_shei 
 # ratio between actual shannon's diversity index and theoretical maximum shannon's diversity index- if all classes are evenly represented, would have a value of 1
 # stable over time, increases at 46 months but I think this is probably a product of the classification rather than reality (ie there was more water at 46 mos)
@@ -388,7 +383,7 @@ p_shei
 ggarrange(p_area_mn, p_cai_mn, p_np, p_cohesion, p_enn, p_clumpy, p_contig, p_shape_mn, ncol = 2, nrow = 4, common.legend = TRUE, legend = "bottom", align = "hv") 
 # export at 2100 x 2800
 
-# only 6 class level plots
+# only 6 class level plots - no ENN, shape index, as these don't add much
 ggarrange(p_area_mn, p_cai_mn, p_np, p_cohesion, p_clumpy, p_contig, ncol = 2, nrow = 3, common.legend = TRUE, legend = "bottom", align = "hv") 
 # export at 2100 x 2800
 

@@ -22,6 +22,7 @@ library(broom)
 ```
 
 ```{r get data}
+# variable importance data
 var_imp <- read_excel("raw/variable_importance_allvars.xlsx", sheet = "Sheet1")
 
 # assign band names to numbers
@@ -32,30 +33,30 @@ var_imp <- var_imp %>%
            Dataset %in% c(0,9,26,34) ~ case_when(
              Band == 1 ~ "NDVI",
              Band == 2 ~ "NIR",
-             Band == 3 ~ "Elev",
-             Band == 4 ~ "Green",
+             Band == 3 ~ "DSM",
+             Band == 4 ~ "Gre",
              Band == 5 ~ "Red",
              Band == 6 ~ "REG",
              TRUE ~ "NA"),
            Dataset == 21 ~ case_when(
-             Band == 1 ~ "Elev",
+             Band == 1 ~ "DSM",
              Band == 2 ~ "NDVI",
              Band == 3 ~ "NIR",
              Band == 4 ~ "REG",
-             Band == 5 ~ "Green",
+             Band == 5 ~ "Gre",
              Band == 6 ~ "Red",
              TRUE ~ "NA"),
            Dataset == 42 ~ case_when(
-             Band == 1 ~ "Elev",
+             Band == 1 ~ "DSM",
              Band == 2 ~ "NDVI",
              Band == 3 ~ "NIR",
-             Band == 4 ~ "Green",
+             Band == 4 ~ "Gre",
              Band == 5 ~ "Red",
              Band == 6 ~ "REG",
              TRUE ~ "NA"),
            Dataset == 46 ~ case_when(
-             Band == 1 ~ "Elev",
-             Band == 2 ~ "Green",
+             Band == 1 ~ "DSM",
+             Band == 2 ~ "Gre",
              Band == 3 ~ "NDVI",
              Band == 4 ~ "NIR",
              Band == 5 ~ "REG",
@@ -73,19 +74,20 @@ var_imp <- var_imp %>%
          Band = case_when(is.na(Band) ~ 0,
                           TRUE ~ Band),
          # make bandname a factor type of variable
-         bandname = factor(bandname, levels = c("Elev", "NDVI", "Green", "Red", "NIR", "REG","NA")),
+         bandname = factor(bandname, levels = c("DSM", "NDVI", "Gre", "Red", "NIR", "REG","NA")),
          ln.imp = log(Importance)) %>% 
   ungroup()
 ```
 
 ```{r visualise differences - plot band/variable importance}
-# visualise differences in rank between bands and features ("variables")
+# visualise differences in feature importance between bands and features ("variables")
+
 # Plot bands
-ggplot(var_imp %>% filter(!is.na(bandname)), aes(bandname, rank)) +
+ggplot(var_imp %>% filter(bandname != "NA"), aes(bandname, Importance)) +
   geom_boxplot()
 
 # plot variables
-ggplot(var_imp %>% filter(!is.na(Variable)), aes(Variable, rank)) +
+ggplot(var_imp, aes(Variable, Importance)) +
   geom_boxplot()
 
 # plot band/var combo
@@ -93,15 +95,10 @@ ggplot(var_imp %>% filter(!is.na(Variable)), aes(Variable, rank)) +
 ggplot(var_imp, aes(bandvar, rank)) +
   geom_boxplot() 
 
-# can't see area and perimeter
-ggplot(var_imp %>% filter(!is.na(Band)), aes(bandname, rank)) +
+# can't see area and perimeter - facets
+ggplot(var_imp %>% filter(bandname != "NA"), aes(bandname, rank)) +
   geom_boxplot()  +
   facet_wrap(~Variable)
-
-
-# bands - importance not rank
-ggplot(var_imp, aes(bandname, Importance, group = Dataset)) +
-  geom_boxplot() 
 ```
 
 
@@ -165,8 +162,10 @@ anova(aov(Importance~Variable*bandname,var_imp))
 # create an interaction term
 var_imp$Var_band_int <- interaction(var_imp$Variable,var_imp$bandname)
 
+# test the interaction - Tukey test
 TukeyHSD(aov(Importance~Var_band_int,var_imp))
 
+# put these data into a dataframe containing significant differences
 fm1 <- aov(Importance ~ Var_band_int, data = var_imp)
 res <- TukeyHSD(fm1, "Var_band_int", ordered = TRUE)
 tukey_df <- as.data.frame(res$Var_band_int) %>% filter(`p adj` < 0.05)
@@ -177,6 +176,8 @@ tukey_df <- cbind(rownames(tukey_df), data.frame(tukey_df, row.names=NULL)) %>%
 ```
 
 ```{r important variables}
+# "firstvar" variables are greater than their respective "secondvar" variables
+# so count how many significant differences for each of these "firstvars"
 tukey_df %>% filter(firstvar == "Mean.Elev") # greater than 55 vars
 tukey_df %>% filter(firstvar == "Mean.NDVI") # greater than 52 vars
 tukey_df %>% filter(firstvar == "Mean.Green") # greater than 53 vars

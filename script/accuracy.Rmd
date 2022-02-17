@@ -20,11 +20,13 @@ library(readxl)
 ```
 
 ```{r get data}
+# producers accuracy
 producers <- read_excel("raw/training_validation_2_alldata.xlsx", sheet = "accuracy") %>% 
   mutate(Scale = as.factor(Scale)) %>% 
   select(-"Users") %>% 
   rename("accuracy" = "Producers")
 
+# users accuracy
 users <- read_excel("raw/training_validation_2_alldata.xlsx", sheet = "accuracy") %>% 
   mutate(Scale = as.factor(Scale)) %>% 
   select(-"Producers") %>% 
@@ -45,7 +47,7 @@ user_wide <- users %>% dplyr::select(Dataset, Scale, Class, accuracy) %>%
 ```
 
 
-```{r functions}
+```{r function - plot accuracy of 4 resolutions over time}
 acc.time.line <- function(dataset, classs, classname){
   dataset %>% subset(Class == classs)  %>% ggplot(aes(x = Date, y = accuracy*100, color = Scale)) +
   geom_line(size = 2) + 
@@ -71,7 +73,7 @@ spor <- acc.time.line(producers, "spor", "Sporobolus") +
 spor
 
 sarc <- acc.time.line(producers, "sarc", "Sarcorcornia") +
-  labs(title = "Sarcorcornia", x = "", y = "Accuracy (%)") 
+  labs(title = "Sarcocornia", x = "", y = "Accuracy (%)") 
 sarc
 # note that this is the main sarc class without the new clumps, accuracy is different for the sarc clump class (higher) but not included in this plot
 
@@ -119,7 +121,7 @@ spor <- acc.time.line(users, "spor", "Sporobolus") +
 spor
 
 sarc <- acc.time.line(users, "sarc", "Sarcorcornia") +
-  labs(title = "Sarcorcornia", x = "", y = "Accuracy (%)") 
+  labs(title = "Sarcocornia", x = "", y = "Accuracy (%)") 
 sarc
 
 grass <- acc.time.line(users, "grass", "Grass") +

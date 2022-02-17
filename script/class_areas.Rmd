@@ -262,7 +262,7 @@ one_scale <- rbind(one_scale, zero_suaeda)
 ```
 
 
-```{r plot}
+```{r plot each class separately}
 # function
 area.plot <- function(classs, classname){
   one_scale %>% subset(category == classs)  %>% ggplot(aes(x = date, y = area, color = as.factor(Scale))) +
@@ -299,7 +299,7 @@ salt.area
 ggarrange(sarc.area, spor.area, sueda.area, grass.area, dead.area, road.area, mud.area, water.area, ncol = 2, nrow = 4, common.legend = TRUE, legend = "bottom") 
 ```
 
-```{r plot together}
+```{r plot saltmarsh classes together}
 # function
 
 combo_plot <- function(x){
@@ -315,9 +315,13 @@ combo_plot <- function(x){
   guides(color = guide_legend(byrow = TRUE)) + # for legend spacing 
   theme(axis.text = element_text(size = 40),
         axis.title = element_text(size = 54),
+        axis.text.x = element_text(vjust = -1),
+        axis.title.x = element_text(vjust = -2),
+        axis.text.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+        axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
         legend.text = element_text(size = 30),
         legend.title = element_text(size = 36),
-        plot.margin = margin(20,10,10,10),
+        plot.margin = margin(10,10,30,50),
         legend.spacing.y = unit(1, "cm"),
         legend.key.size = unit(3,"line"))
 }
