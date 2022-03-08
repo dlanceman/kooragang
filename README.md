@@ -2,6 +2,10 @@
 
 This repository contains code for analysing classified drone imagery from Fish Fry Flat, Kooragang wetlands, NSW. The code could also be used to analyse classified images from other wetlands/ecosystems.
 
+Some of the raw data used in these scripts were too large to upload to GitHub, but are available in a Mendeley Repository.
+
+
+
 The "class_areas" script calculates total areas for each class in classified images.
 
 The "accuracy" script takes input summary data for producer's and user's accuracy and plots accuracy over time for each class.
