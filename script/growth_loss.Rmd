@@ -13,6 +13,7 @@ This script is more of an exploratory script to investigate patterns in growth/l
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = 'C:/Users/danal/OneDrive - UNSW/Desktop/WRL/R')
+# replace the above with the path to your home directory
 ```
 
 ```{r get packages}
