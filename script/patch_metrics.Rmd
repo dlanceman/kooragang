@@ -241,7 +241,7 @@ allpatchl.w$date <- as.Date(allpatchl.w$date)
 Just visualise saltmarsh classes
 
 ```{r subset for only saltmarsh classes}
-allpatch.ws <- allpatch.w %>% filter(category %in% c("spor", "sarc", "sueda")) %>% mutate(category = as.factor(category))
+allpatch.ws <- allpatch.w %>% filter(category %in% c("sarc", "spor", "sueda")) %>% mutate(category = as.factor(category))
 
 # can't do this for landscape metrics, as it's  about the entire landscape with all classes included
 ```
@@ -252,8 +252,8 @@ patch_plot <- function(y_var, ylab){
   ggplot() +
     aes(x = date, y = y_var, color = category, linetype = category) +
   geom_line(size = 3) +
-    scale_color_manual(values = c("#1fbfad", "#f2c80c", "#5c0b1f"), labels = c("Sporobolus virginicus","Sarcocornia quinqueflora","Suaeda australis")) +
-    scale_linetype_manual(values=c(2,3,4), labels = c("Sporobolus virginicus","Sarcocornia quinqueflora","Suaeda australis")) +
+    scale_color_manual(values = c("#1fbfad", "#f2c80c", "#5c0b1f"), labels = c("Sarcocornia quinqueflora","Sporobolus virginicus","Suaeda australis")) +
+    scale_linetype_manual(values=c(2,3,4), labels = c("Sarcocornia quinqueflora","Sporobolus virginicus","Suaeda australis")) +
     labs(x = "Date", y = ylab, color = "", linetype = "") +
   theme_classic() +
   theme(text = element_text(size = 40),
